@@ -121,6 +121,8 @@ static void gattc_profile_event_handler(
         		ESP_LOGI(TAG, "Cannot connect to %x with: %x", bda[i][5], ret);
         	    break;
         	}
+
+        	vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         break;
     }
@@ -132,7 +134,6 @@ static void gattc_profile_event_handler(
 			"ESP_GATTC_CONNECT_EVT conn_id %d, if %d",
 			param->connect.conn_id,
 			gattc_if);
-
         profile_tab[PROFILE_A_APP_ID].conn_id = param->connect.conn_id;
         memcpy(
         	profile_tab[PROFILE_A_APP_ID].remote_bda,
@@ -153,6 +154,10 @@ static void gattc_profile_event_handler(
 				"config MTU error, error code = %x",
 				ret);
         }
+        esp_ble_gattc_register_for_notify(
+        	gattc_if,
+			param->connect.remote_bda,
+			0x2a);
         break;
     }
 
@@ -302,6 +307,18 @@ static void gattc_profile_event_handler(
 			param->read.value[0]);
     	break;
 
+    case ESP_GATTC_REG_FOR_NOTIFY_EVT:
+    	ESP_LOGI(TAG, "register for notify");
+    	break;
+
+    case ESP_GATTC_NOTIFY_EVT:
+    	ESP_LOGI(
+    		TAG,
+			"notified from boi %d: %d",
+			param->notify.conn_id,
+			param->notify.value[0]);
+    	break;
+
     case ESP_GATTC_DISCONNECT_EVT:
         connect = false;
         get_server = false;
@@ -376,29 +393,6 @@ static void esp_gattc_cb(
 		/* ESP_GATT_IF_NONE, not specify a certain gatt_if, need to call every profile cb function */
 		if ((is_none || is_this) && profile_tab[idx].gattc_cb)
 				profile_tab[idx].gattc_cb(event, gattc_if, param);
-	}
-}
-
-void poller(void *_)
-{
-	for (;;)
-	{
-		for (size_t i = 0; i < 1; i++)
-		{
-			ESP_LOGI(
-				TAG,
-				"Trying to read rms from %d",
-				i);
-
-			/*esp_ble_gattc_read_char(
-				profile_tab[PROFILE_A_APP_ID].gattc_if,
-				i,
-				rms_handle,
-				ESP_GATT_AUTH_REQ_NONE);*/
-			vTaskDelay(10 / portTICK_PERIOD_MS);
-		}
-
-		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -493,13 +487,4 @@ void app_main()
 			"set local  MTU failed, error code = %x",
 			ret);
     }
-
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    xTaskCreate(
-    	poller,
-		"poller",
-		configMINIMAL_STACK_SIZE * 2,
-		NULL,
-		configMAX_PRIORITIES / 2,
-		NULL);
 }
