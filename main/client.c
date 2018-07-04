@@ -84,6 +84,9 @@ struct gattc_profile_inst
     esp_bd_addr_t remote_bda;
 };
 
+uint16_t rms_handle;
+
+
 /* One gatt-based profile one app_id and one gattc_if, this array will store the gattc_if returned by ESP_GATTS_REG_EVT */
 static struct gattc_profile_inst profile_tab[PROFILE_NUM] =
 {
@@ -258,11 +261,7 @@ static void gattc_profile_event_handler(
 				}
 
 				ESP_LOGI(TAG, "char handle %x", char_elem_result->char_handle);
-				status = esp_ble_gattc_read_char(
-					gattc_if,
-					param->search_cmpl.conn_id,
-					char_elem_result->char_handle,
-					ESP_GATT_AUTH_REQ_NONE);
+				rms_handle = char_elem_result->char_handle;
 				if (status != ESP_GATT_OK)
 				{
 					ESP_LOGE(TAG, "esp_ble_gattc_read_char");
@@ -296,9 +295,11 @@ static void gattc_profile_event_handler(
 				param->read.status);
     		break;
     	}
-    	ESP_LOGI(TAG, "read char success ");
-    	ESP_LOGI(TAG, "read value len: %d", param->read.value_len);
-    	ESP_LOGI(TAG, "read value: 0x%x", param->read.value[0]);
+    	ESP_LOGI(
+    		TAG,
+			"read rms from %d with value %d",
+			param->read.conn_id,
+			param->read.value[0]);
     	break;
 
     case ESP_GATTC_DISCONNECT_EVT:
@@ -375,6 +376,29 @@ static void esp_gattc_cb(
 		/* ESP_GATT_IF_NONE, not specify a certain gatt_if, need to call every profile cb function */
 		if ((is_none || is_this) && profile_tab[idx].gattc_cb)
 				profile_tab[idx].gattc_cb(event, gattc_if, param);
+	}
+}
+
+void poller(void *_)
+{
+	for (;;)
+	{
+		for (size_t i = 0; i < 1; i++)
+		{
+			ESP_LOGI(
+				TAG,
+				"Trying to read rms from %d",
+				i);
+
+			/*esp_ble_gattc_read_char(
+				profile_tab[PROFILE_A_APP_ID].gattc_if,
+				i,
+				rms_handle,
+				ESP_GATT_AUTH_REQ_NONE);*/
+			vTaskDelay(10 / portTICK_PERIOD_MS);
+		}
+
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -469,4 +493,13 @@ void app_main()
 			"set local  MTU failed, error code = %x",
 			ret);
     }
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    xTaskCreate(
+    	poller,
+		"poller",
+		configMINIMAL_STACK_SIZE * 2,
+		NULL,
+		configMAX_PRIORITIES / 2,
+		NULL);
 }
