@@ -33,10 +33,45 @@ static uint8_t rms[] =
 	0
 };
 
-uint16_t rms_handle;
+int current_a2dp_idx = -1;
+static uint16_t rms_handle;
 
 static bool connect    = false;
 static bool get_server = false;
+
+void switch_to_a2dp(size_t idx)
+{
+	esp_ble_gap_disconnect(bda[idx]);
+
+	current_a2dp_idx = idx;
+}
+
+void handle_rms_notification()
+{
+	uint8_t max_rms = 0;
+	size_t max_idx = 0;
+
+	for (size_t i = 0; i < LEN_OF(rms); i++)
+	{
+		if (rms[i] > max_rms)
+		{
+			max_rms = rms[i];
+			max_idx = i;
+		}
+	}
+
+	ESP_LOGI(TAG, "Max rms from %d: %d", max_idx, max_rms);
+
+	if (max_rms > rms[current_a2dp_idx] && max_rms > 2)
+	{
+		ESP_LOGI(
+			TAG,
+			"Better than current, switching from %d to %d",
+			current_a2dp_idx,
+			max_idx);
+		switch_to_a2dp(max_idx);
+	}
+}
 
 /* One gatt-based profile one app_id and one gattc_if, this array will store the gattc_if returned by ESP_GATTS_REG_EVT */
 gattc_profile_inst profile_tab[PROFILE_NUM] =
@@ -269,6 +304,7 @@ void gattc_profile_event_handler(
 			param->notify.conn_id,
 			param->notify.value[0]);
     	rms[param->notify.conn_id] = param->notify.value[0];
+    	handle_rms_notification();
     	break;
 
     case ESP_GATTC_DISCONNECT_EVT:

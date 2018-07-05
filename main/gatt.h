@@ -31,6 +31,8 @@
 #define PROFILE_A_APP_ID 0
 #define INVALID_HANDLE   0
 
+extern uint8_t current_rms;
+
 typedef struct
 {
     esp_gattc_cb_t gattc_cb;
