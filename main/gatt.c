@@ -62,7 +62,7 @@ void handle_rms_notification()
 
 	ESP_LOGI(TAG, "Max rms from %d: %d", max_idx, max_rms);
 
-	if (max_rms > rms[current_a2dp_idx] && max_rms > 2)
+	if (max_rms > rms[current_a2dp_idx])
 	{
 		ESP_LOGI(
 			TAG,
