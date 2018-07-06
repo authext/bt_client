@@ -20,7 +20,8 @@
 #include "esp_gatt_common_api.h"
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
-#include "gatt.h"
+
+#include "gattc.h"
 #include "tag.h"
 
 

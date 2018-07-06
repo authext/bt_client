@@ -1,4 +1,5 @@
-#include "gatt.h"
+#include "gattc.h"
+
 #include "tag.h"
 
 #define LEN_OF(x) (sizeof(x) / sizeof(x[0]))
