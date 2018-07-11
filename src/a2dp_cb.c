@@ -30,20 +30,19 @@
 
 typedef enum
 {
-    APP_AV_STATE_IDLE,
-    APP_AV_STATE_CONNECTING,
-    APP_AV_STATE_CONNECTED,
-    APP_AV_STATE_DISCONNECTING,
-	APP_AV_STATE_DISCONNECTED,
+    A2DP_CB_STATE_IDLE,
+    A2DP_CB_STATE_CONNECTING,
+    A2DP_CB_STATE_CONNECTED,
+    A2DP_CB_STATE_DISCONNECTING,
 } a2dp_cb_state_t;
 
 /* Only valid when connected */
 typedef enum
 {
-    APP_AV_MEDIA_STATE_IDLE,
-    APP_AV_MEDIA_STATE_STARTING,
-    APP_AV_MEDIA_STATE_STARTED,
-    APP_AV_MEDIA_STATE_STOPPING,
+    A2DP_CB_MEDIA_STATE_IDLE,
+    A2DP_CB_MEDIA_STATE_STARTING,
+    A2DP_CB_MEDIA_STATE_STARTED,
+    A2DP_CB_MEDIA_STATE_STOPPING,
 } a2dp_cb_media_state;
 
 
@@ -51,7 +50,6 @@ typedef enum
 static void a2dp_cb_state_connecting(uint16_t event, void *param);
 static void a2dp_cb_state_connected(uint16_t event, void *param);
 static void a2dp_cb_state_disconnecting(uint16_t event, void *param);
-static void a2dp_cb_state_disconnected(uint16_t event, void *param);
 
 static void a2dp_cb_media_proc(uint16_t event, void *param);
 static void a2dp_cb_heart_beat(void *arg);
@@ -65,17 +63,28 @@ static void a2dp_cb_state_machine(uint16_t event, void *param);
 /// callback function for A2DP source audio data stream
 static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len);
 
-esp_bd_addr_t peer_bda;
-int m_a2d_state = APP_AV_STATE_IDLE;
-int m_media_state = APP_AV_MEDIA_STATE_IDLE;
-int m_intv_cnt = 0;
-int m_connecting_intv = 0;
-uint32_t m_pkt_cnt = 0;
+static esp_bd_addr_t peer_bda;
+static int m_a2d_state = A2DP_CB_STATE_IDLE;
+static int m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
+static int m_intv_cnt = 0;
+static int m_connecting_intv = 0;
+static uint32_t m_pkt_cnt = 0;
 
-TimerHandle_t tmr;
+static TimerHandle_t tmr;
 
 
-void a2dp_cb_gap_cb(
+esp_err_t a2d_cb_connect(const esp_bd_addr_t addr)
+{
+	memcpy(peer_bda, addr, sizeof(esp_bd_addr_t));
+
+	m_a2d_state = A2DP_CB_STATE_CONNECTING;
+	esp_err_t ret = esp_a2d_sink_connect(peer_bda);
+	if (ret != ESP_OK)
+		m_a2d_state = A2DP_CB_STATE_IDLE;
+	return ret;
+}
+
+static void a2dp_cb_gap_cb(
 	esp_bt_gap_cb_event_t event,
 	esp_bt_gap_cb_param_t *param)
 {
@@ -105,7 +114,7 @@ void a2d_cb_handle_stack_event(uint16_t event, void *p_param)
 
     switch (event)
     {
-    case BT_APP_EVT_STACK_UP:
+    case A2D_CB_EVENT_STACK_UP:
     {
         esp_bt_gap_register_callback(a2dp_cb_gap_cb);
 
@@ -171,24 +180,20 @@ void a2dp_cb_state_machine(uint16_t event, void *param)
 
     switch (m_a2d_state)
     {
-    case APP_AV_STATE_IDLE:
+    case A2DP_CB_STATE_IDLE:
         break;
 
-    case APP_AV_STATE_CONNECTING:
+    case A2DP_CB_STATE_CONNECTING:
         a2dp_cb_state_connecting(event, param);
         break;
 
-    case APP_AV_STATE_CONNECTED:
+    case A2DP_CB_STATE_CONNECTED:
         a2dp_cb_state_connected(event, param);
         break;
 
-    case APP_AV_STATE_DISCONNECTING:
+    case A2DP_CB_STATE_DISCONNECTING:
         a2dp_cb_state_disconnecting(event, param);
         break;
-
-    case APP_AV_STATE_DISCONNECTED:
-    	a2dp_cb_state_disconnected(event, param);
-    	break;
 
     default:
         ESP_LOGE(
@@ -210,12 +215,12 @@ static void a2dp_cb_state_connecting(uint16_t event, void *param)
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED)
         {
             ESP_LOGI(A2DP_CB_TAG, "a2dp connected");
-            m_a2d_state =  APP_AV_STATE_CONNECTED;
-            m_media_state = APP_AV_MEDIA_STATE_IDLE;
+            m_a2d_state =  A2DP_CB_STATE_CONNECTED;
+            m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
         }
         else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
         {
-            m_a2d_state =  APP_AV_STATE_DISCONNECTED;
+            m_a2d_state =  A2DP_CB_STATE_IDLE;
         }
         break;
 
@@ -227,7 +232,7 @@ static void a2dp_cb_state_connecting(uint16_t event, void *param)
     case BT_APP_HEART_BEAT_EVT:
         if (++m_connecting_intv >= 2)
         {
-            m_a2d_state = APP_AV_STATE_DISCONNECTED;
+            m_a2d_state = A2DP_CB_STATE_IDLE;
             m_connecting_intv = 0;
         }
         break;
@@ -247,7 +252,7 @@ static void a2dp_cb_state_connected(uint16_t event, void *param)
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
         {
             ESP_LOGI(A2DP_CB_TAG, "a2dp disconnected");
-            m_a2d_state = APP_AV_STATE_DISCONNECTED;
+            m_a2d_state = A2DP_CB_STATE_IDLE;
         }
         break;
 
@@ -281,7 +286,7 @@ static void a2dp_cb_state_disconnecting(uint16_t event, void *param)
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
         {
             ESP_LOGI(A2DP_CB_TAG, "a2dp disconnected");
-            m_a2d_state =  APP_AV_STATE_DISCONNECTED;
+            m_a2d_state =  A2DP_CB_STATE_IDLE;
         }
         break;
 
@@ -297,18 +302,13 @@ static void a2dp_cb_state_disconnecting(uint16_t event, void *param)
     }
 }
 
-static void a2dp_cb_state_disconnected(uint16_t event, void *param)
-{
-
-}
-
 static void a2dp_cb_media_proc(uint16_t event, void *param)
 {
     esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
 
     switch (m_media_state)
     {
-    case APP_AV_MEDIA_STATE_IDLE:
+    case A2DP_CB_MEDIA_STATE_IDLE:
         if (event == BT_APP_HEART_BEAT_EVT)
         {
             ESP_LOGI(A2DP_CB_TAG, "a2dp media ready checking ...");
@@ -322,12 +322,12 @@ static void a2dp_cb_media_proc(uint16_t event, void *param)
             {
                 ESP_LOGI(A2DP_CB_TAG, "a2dp media ready, starting ...");
                 esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_START);
-                m_media_state = APP_AV_MEDIA_STATE_STARTING;
+                m_media_state = A2DP_CB_MEDIA_STATE_STARTING;
             }
         }
         break;
 
-    case APP_AV_MEDIA_STATE_STARTING:
+    case A2DP_CB_MEDIA_STATE_STARTING:
         if (event == ESP_A2D_MEDIA_CTRL_ACK_EVT)
         {
         	const bool is_cmd_start = a2d->media_ctrl_stat.cmd == ESP_A2D_MEDIA_CTRL_START;
@@ -336,31 +336,31 @@ static void a2dp_cb_media_proc(uint16_t event, void *param)
             {
                 ESP_LOGI(A2DP_CB_TAG, "a2dp media start successfully.");
                 m_intv_cnt = 0;
-                m_media_state = APP_AV_MEDIA_STATE_STARTED;
+                m_media_state = A2DP_CB_MEDIA_STATE_STARTED;
             }
             else
             {
                 // not started succesfully, transfer to idle state
                 ESP_LOGI(A2DP_CB_TAG, "a2dp media start failed.");
-                m_media_state = APP_AV_MEDIA_STATE_IDLE;
+                m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
             }
         }
         break;
 
-    case APP_AV_MEDIA_STATE_STARTED:
+    case A2DP_CB_MEDIA_STATE_STARTED:
         if (event == BT_APP_HEART_BEAT_EVT)
         {
             if (++m_intv_cnt >= 10)
             {
                 ESP_LOGI(A2DP_CB_TAG, "a2dp media stopping...");
                 esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
-                m_media_state = APP_AV_MEDIA_STATE_STOPPING;
+                m_media_state = A2DP_CB_MEDIA_STATE_STOPPING;
                 m_intv_cnt = 0;
             }
         }
         break;
 
-    case APP_AV_MEDIA_STATE_STOPPING:
+    case A2DP_CB_MEDIA_STATE_STOPPING:
         if (event == ESP_A2D_MEDIA_CTRL_ACK_EVT)
         {
         	const bool is_cmd_stop = a2d->media_ctrl_stat.cmd == ESP_A2D_MEDIA_CTRL_STOP;
@@ -369,9 +369,9 @@ static void a2dp_cb_media_proc(uint16_t event, void *param)
             if (is_cmd_stop && is_status_success)
             {
                 ESP_LOGI(A2DP_CB_TAG, "a2dp media stopped successfully, disconnecting...");
-                m_media_state = APP_AV_MEDIA_STATE_IDLE;
+                m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
                 esp_a2d_sink_disconnect(peer_bda);
-                m_a2d_state = APP_AV_STATE_DISCONNECTING;
+                m_a2d_state = A2DP_CB_STATE_DISCONNECTING;
             }
             else
             {

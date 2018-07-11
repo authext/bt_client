@@ -28,20 +28,12 @@
 
 typedef enum
 {
-    BT_APP_EVT_STACK_UP = 0,
+    A2D_CB_EVENT_STACK_UP = 0,
 } a2dp_cb_event_t;
 
 /// handler for bluetooth stack enabled events
 void a2d_cb_handle_stack_event(uint16_t event, void *p_param);
+esp_err_t a2d_cb_connect(const esp_bd_addr_t addr);
 
-
-extern esp_bd_addr_t peer_bda;
-extern int m_a2d_state;
-extern int m_media_state;
-extern int m_intv_cnt;
-extern int m_connecting_intv;
-extern uint32_t m_pkt_cnt;
-
-extern TimerHandle_t tmr;
 
 #endif
