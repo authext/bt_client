@@ -20,9 +20,9 @@
 #include "esp_gatt_common_api.h"
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
-
+// My includes
 #include "gattc.h"
-#include "tag.h"
+#include "tags.h"
 
 
 void app_main()
@@ -40,7 +40,7 @@ void app_main()
     if ((ret = esp_bt_controller_init(&bt_cfg)) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"%s enable controller failed: %s",
 			__func__,
 			esp_err_to_name(ret));
@@ -50,7 +50,7 @@ void app_main()
     if ((ret = esp_bt_controller_enable(ESP_BT_MODE_BTDM)) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"%s enable controller failed: %s",
 			__func__,
 			esp_err_to_name(ret));
@@ -60,7 +60,7 @@ void app_main()
     if ((ret = esp_bluedroid_init()) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"%s init bluetooth failed: %s",
 			__func__,
 			esp_err_to_name(ret));
@@ -70,7 +70,7 @@ void app_main()
     if ((ret = esp_bluedroid_enable()) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"%s enable bluetooth failed: %s",
 			__func__,
 			esp_err_to_name(ret));
@@ -81,7 +81,7 @@ void app_main()
     if ((ret = esp_ble_gap_register_callback(esp_gap_cb)) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"%s gap register failed: %s",
 			__func__,
 			esp_err_to_name(ret));
@@ -92,7 +92,7 @@ void app_main()
     if((ret = esp_ble_gattc_register_callback(esp_gattc_cb)) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"%s gattc register failed: %s",
 			__func__,
 			esp_err_to_name(ret));
@@ -102,7 +102,7 @@ void app_main()
     if ((ret = esp_ble_gattc_app_register(PROFILE_A_APP_ID)) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"%s gattc app register failed: %s",
 			__func__,
 			esp_err_to_name(ret));
@@ -112,7 +112,7 @@ void app_main()
     if ((ret = esp_ble_gatt_set_local_mtu(500)) != ESP_OK)
     {
         ESP_LOGE(
-        	TAG,
+        	CLIENT_TAG,
 			"set local  MTU failed, error code = %x",
 			ret);
     }

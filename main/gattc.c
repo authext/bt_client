@@ -1,6 +1,5 @@
 #include "gattc.h"
-
-#include "tag.h"
+#include "tags.h"
 
 #define LEN_OF(x) (sizeof(x) / sizeof(x[0]))
 
@@ -24,8 +23,8 @@ static esp_bt_uuid_t remote_filter_char_uuid =
 
 static esp_bd_addr_t bda[] =
 {
-	{ 0x30, 0xae, 0xa4, 0x5d, 0xc6, 0x76 },
-	{ 0x30, 0xae, 0xa4, 0x74, 0x1c, 0xf2 },
+	{ 0x30, 0xae, 0xa4, 0x3c, 0x3d, 0xf2 },
+	{ 0x30, 0xae, 0xa4, 0x3c, 0x89, 0xf6 },
 };
 
 static uint8_t rms[] =
@@ -61,12 +60,12 @@ void handle_rms_notification()
 		}
 	}
 
-	ESP_LOGI(TAG, "Max rms from %d: %d", max_idx, max_rms);
+	ESP_LOGI(GATTC_TAG, "Max rms from %d: %d", max_idx, max_rms);
 
 	if (max_rms > rms[current_a2dp_idx])
 	{
 		ESP_LOGI(
-			TAG,
+			GATTC_TAG,
 			"Better than current, switching from %d to %d",
 			current_a2dp_idx,
 			max_idx);
@@ -93,7 +92,7 @@ void gattc_profile_event_handler(
     {
     case ESP_GATTC_REG_EVT:
     {
-        ESP_LOGI(TAG, "REG_EVT");
+        ESP_LOGI(GATTC_TAG, "REG_EVT");
         esp_err_t ret;
         for (size_t i = 0; i < LEN_OF(bda); i++)
         {
@@ -105,7 +104,7 @@ void gattc_profile_event_handler(
 
         	if (ret != ESP_OK)
         	{
-        		ESP_LOGI(TAG, "Cannot connect to %x with: %x", bda[i][5], ret);
+        		ESP_LOGI(GATTC_TAG, "Cannot connect to %x with: %x", bda[i][5], ret);
         	    break;
         	}
 
@@ -117,7 +116,7 @@ void gattc_profile_event_handler(
     case ESP_GATTC_CONNECT_EVT:
     {
         ESP_LOGI(
-        	TAG,
+        	GATTC_TAG,
 			"ESP_GATTC_CONNECT_EVT conn_id %d, if %d",
 			param->connect.conn_id,
 			gattc_if);
@@ -127,17 +126,17 @@ void gattc_profile_event_handler(
 			param->connect.remote_bda,
 			sizeof(esp_bd_addr_t));
         ESP_LOGI(
-        	TAG,
+        	GATTC_TAG,
 			"REMOTE BDA:");
         esp_log_buffer_hex(
-        	TAG,
+        	GATTC_TAG,
 			profile_tab[PROFILE_A_APP_ID].remote_bda,
 			sizeof(esp_bd_addr_t));
         esp_err_t ret;
         if ((ret = esp_ble_gattc_send_mtu_req(gattc_if, param->connect.conn_id)) != ESP_OK)
         {
             ESP_LOGE(
-            	TAG,
+            	GATTC_TAG,
 				"config MTU error, error code = %x",
 				ret);
         }
@@ -152,24 +151,24 @@ void gattc_profile_event_handler(
         if (param->open.status != ESP_GATT_OK)
         {
             ESP_LOGE(
-            	TAG,
+            	GATTC_TAG,
 				"open failed, status %d",
 				param->open.status);
             break;
         }
-        ESP_LOGI(TAG, "open success");
+        ESP_LOGI(GATTC_TAG, "open success");
         break;
 
     case ESP_GATTC_CFG_MTU_EVT:
         if (param->cfg_mtu.status != ESP_GATT_OK)
         {
             ESP_LOGE(
-            	TAG,
+            	GATTC_TAG,
 				"config mtu failed, error status = %x",
 				param->cfg_mtu.status);
         }
         ESP_LOGI(
-        	TAG,
+        	GATTC_TAG,
 			"ESP_GATTC_CFG_MTU_EVT, Status %d, MTU %d, conn_id %d",
 			param->cfg_mtu.status,
 			param->cfg_mtu.mtu,
@@ -183,25 +182,26 @@ void gattc_profile_event_handler(
     case ESP_GATTC_SEARCH_RES_EVT:
     {
         ESP_LOGI(
-        	TAG,
+        	GATTC_TAG,
 			"SEARCH RES: conn_id = %x is primary service %d",
 			param->search_res.conn_id,
 			param->search_res.is_primary);
         ESP_LOGI(
-        	TAG,
+        	GATTC_TAG,
 			"start handle %d end handle %d current handle value %d",
 			param->search_res.start_handle,
 			param->search_res.start_handle,
 			param->search_res.srvc_id.inst_id);
+
         if (param->search_res.srvc_id.uuid.len == ESP_UUID_LEN_16 &&
         	param->search_res.srvc_id.uuid.uuid.uuid16 == REMOTE_SERVICE_UUID)
         {
-            ESP_LOGI(TAG, "service found");
+            ESP_LOGI(GATTC_TAG, "service found");
             get_server = true;
             profile_tab[PROFILE_A_APP_ID].service_start_handle = param->search_res.start_handle;
             profile_tab[PROFILE_A_APP_ID].service_end_handle = param->search_res.end_handle;
             ESP_LOGI(
-            	TAG,
+            	GATTC_TAG,
 				"UUID16: %x",
 				param->search_res.srvc_id.uuid.uuid.uuid16);
         }
@@ -212,12 +212,14 @@ void gattc_profile_event_handler(
         if (param->search_cmpl.status != ESP_GATT_OK)
         {
             ESP_LOGE(
-            	TAG,
+            	GATTC_TAG,
 				"search service failed, error status = %x",
 				param->search_cmpl.status);
             break;
         }
-        ESP_LOGI(TAG, "ESP_GATTC_SEARCH_CMPL_EVT");
+
+        ESP_LOGI(GATTC_TAG, "ESP_GATTC_SEARCH_CMPL_EVT");
+
         if (get_server)
         {
             uint16_t count = 0;
@@ -231,14 +233,14 @@ void gattc_profile_event_handler(
                 &count);
             if (status != ESP_GATT_OK)
             {
-                ESP_LOGE(TAG, "esp_ble_gattc_get_attr_count error");
+                ESP_LOGE(GATTC_TAG, "esp_ble_gattc_get_attr_count error");
             }
 
             if (count > 0)
             {
             	esp_gattc_char_elem_t char_elem_result[count];
 
-				ESP_LOGI(TAG, "attr count: %d", count);
+				ESP_LOGI(GATTC_TAG, "attr count: %d", count);
 				status = esp_ble_gattc_get_char_by_uuid(
 					gattc_if,
 					param->search_cmpl.conn_id,
@@ -249,19 +251,19 @@ void gattc_profile_event_handler(
 					&count);
 				if (status != ESP_GATT_OK)
 				{
-					ESP_LOGE(TAG, "esp_ble_gattc_get_char_by_uuid error");
+					ESP_LOGE(GATTC_TAG, "esp_ble_gattc_get_char_by_uuid error");
 				}
 
-				ESP_LOGI(TAG, "char handle %x", char_elem_result->char_handle);
+				ESP_LOGI(GATTC_TAG, "char handle %x", char_elem_result->char_handle);
 				rms_handle = char_elem_result->char_handle;
 				if (status != ESP_GATT_OK)
 				{
-					ESP_LOGE(TAG, "esp_ble_gattc_read_char");
+					ESP_LOGE(GATTC_TAG, "esp_ble_gattc_read_char");
 				}
             }
             else
             {
-                ESP_LOGE(TAG, "no char found");
+                ESP_LOGE(GATTC_TAG, "no char found");
             }
         }
         break;
@@ -273,8 +275,8 @@ void gattc_profile_event_handler(
         	bda,
 			param->srvc_chg.remote_bda,
 			sizeof(esp_bd_addr_t));
-        ESP_LOGI(TAG, "ESP_GATTC_SRVC_CHG_EVT, bd_addr:");
-        esp_log_buffer_hex(TAG, bda, sizeof(esp_bd_addr_t));
+        ESP_LOGI(GATTC_TAG, "ESP_GATTC_SRVC_CHG_EVT, bd_addr:");
+        esp_log_buffer_hex(GATTC_TAG, bda, sizeof(esp_bd_addr_t));
         break;
     }
 
@@ -282,25 +284,25 @@ void gattc_profile_event_handler(
     	if (param->read.status != ESP_GATT_OK)
     	{
     		ESP_LOGE(
-    			TAG,
+    			GATTC_TAG,
 				"read char failed, error status = %x",
 				param->read.status);
     		break;
     	}
     	ESP_LOGI(
-    		TAG,
+    		GATTC_TAG,
 			"read rms from %d with value %d",
 			param->read.conn_id,
 			param->read.value[0]);
     	break;
 
     case ESP_GATTC_REG_FOR_NOTIFY_EVT:
-    	ESP_LOGI(TAG, "register for notify");
+    	ESP_LOGI(GATTC_TAG, "register for notify");
     	break;
 
     case ESP_GATTC_NOTIFY_EVT:
     	ESP_LOGI(
-    		TAG,
+    		GATTC_TAG,
 			"notified from boi %d: %d",
 			param->notify.conn_id,
 			param->notify.value[0]);
@@ -312,7 +314,7 @@ void gattc_profile_event_handler(
         connect = false;
         get_server = false;
         ESP_LOGI(
-        	TAG,
+        	GATTC_TAG,
 			"ESP_GATTC_DISCONNECT_EVT, reason = %d",
 			param->disconnect.reason);
         break;
@@ -328,7 +330,7 @@ void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
     {
     case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:
          ESP_LOGI(
-        	TAG,
+        	GATTC_TAG,
 			"Connection updated\n"\
 				"\tstatus = %d,\n"\
 				"\tmin_int = %d,\n"\
@@ -363,7 +365,7 @@ void esp_gattc_cb(
     	}
         else
     	{
-    		ESP_LOGI(TAG,
+    		ESP_LOGI(GATTC_TAG,
     			"reg app failed, app_id %04x, status %d",
     			param->reg.app_id,
     			param->reg.status);
