@@ -21,9 +21,9 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 // My includes
+#include "a2dp_cb.h"
 #include "gattc.h"
 #include "tags.h"
-#include "a2dp_cb.h"
 
 
 void app_main()
@@ -115,8 +115,7 @@ void app_main()
     	bt_av_hdl_stack_evt,
 		BT_APP_EVT_STACK_UP,
 		NULL,
-		0,
-		NULL);
+		0);
 
     if ((ret = esp_ble_gatt_set_local_mtu(500)) != ESP_OK)
     {

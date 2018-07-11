@@ -1,6 +1,6 @@
 #include "gattc.h"
-#include "tags.h"
 #include "switching.h"
+#include "tags.h"
 
 static esp_bt_uuid_t remote_filter_service_uuid =
 {

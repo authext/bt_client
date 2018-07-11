@@ -1,11 +1,3 @@
-/*
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,19 +5,17 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-#include "nvs.h"
-#include "nvs_flash.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_bt.h"
 #include "a2dp_core.h"
-#include "a2dp_cb.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
 #include "tags.h"
+#include "a2dp_cb.h"
 
 /* A2DP application state machine handler for each state */
 static void bt_app_av_state_connecting(uint16_t event, void *param);
@@ -120,8 +110,7 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
     	bt_app_av_sm_hdlr,
 		event,
 		param,
-		sizeof(esp_a2d_cb_param_t),
-		NULL);
+		sizeof(esp_a2d_cb_param_t));
 }
 
 static void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
@@ -136,8 +125,7 @@ static void a2d_app_heart_beat(void *arg)
     	bt_app_av_sm_hdlr,
 		BT_APP_HEART_BEAT_EVT,
 		NULL,
-		0,
-		NULL);
+		0);
 }
 
 void bt_app_av_sm_hdlr(uint16_t event, void *param)

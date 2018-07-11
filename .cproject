@@ -20,7 +20,7 @@
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.Cygwin_PE" id="cdt.managedbuild.target.gnu.platform.cygwin.base.1536756654" name="Debug Platform" osList="win32" superClass="cdt.managedbuild.target.gnu.platform.cygwin.base"/>
 							<builder id="cdt.managedbuild.target.gnu.builder.cygwin.base.346076923" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.cygwin.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.cygwin.base.1343336640" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.cygwin.base">
-								<option id="gnu.both.asm.option.include.paths.1020884570" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+								<option id="gnu.both.asm.option.include.paths.1020884570" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\log\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\freertos\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\nvs_flash\include&quot;"/>
@@ -28,12 +28,13 @@
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\bt\bluedroid\api\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\esp32\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\server\build\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\a2dp_core\include&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1546872825" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.cygwin.base.1784284460" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.cygwin.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.base.857350657" name="Cygwin C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.base">
-								<option id="gnu.cpp.compiler.option.include.paths.2132315259" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+								<option id="gnu.cpp.compiler.option.include.paths.2132315259" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\log\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\freertos\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\nvs_flash\include&quot;"/>
@@ -41,11 +42,12 @@
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\bt\bluedroid\api\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\esp32\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\server\build\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\a2dp_core\include&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.cygwin.380807048" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input.cygwin"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.cygwin.base.245766875" name="Cygwin C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.cygwin.base">
-								<option id="gnu.c.compiler.option.include.paths.1425944307" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+								<option id="gnu.c.compiler.option.include.paths.1425944307" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\log\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\freertos\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\nvs_flash\include&quot;"/>
@@ -53,6 +55,7 @@
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\bt\bluedroid\api\include\api&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\esp-idf\components\esp32\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\server\build\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\Users\avpavlovic\Downloads\msys32\usr\src\a2dp_core\include&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.cygwin.589768604" superClass="cdt.managedbuild.tool.gnu.c.compiler.input.cygwin"/>
 							</tool>

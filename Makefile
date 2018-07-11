@@ -1,11 +1,3 @@
-#
-# This is a project Makefile. It is assumed the directory this Makefile resides in is a
-# project subdirectory.
-#
-
-PROJECT_NAME := gatt_client
-
-COMPONENT_ADD_INCLUDEDIRS := components/include
-
+PROJECT_NAME := client
+EXTRA_COMPONENT_DIRS := $(abspath ../a2dp_core) $(abspath .)
 include $(IDF_PATH)/make/project.mk
-
