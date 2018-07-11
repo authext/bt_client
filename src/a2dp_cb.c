@@ -112,17 +112,41 @@ void a2d_cb_handle_stack_event(uint16_t event, void *p_param)
 {
     ESP_LOGD(A2DP_CB_TAG, "%s evt %d", __func__, event);
 
+    esp_err_t ret;
+
     switch (event)
     {
     case A2D_CB_EVENT_STACK_UP:
     {
-        esp_bt_gap_register_callback(a2dp_cb_gap_cb);
+        if ((ret = esp_bt_gap_register_callback(a2dp_cb_gap_cb)) != ESP_OK)
+        {
+        	ESP_LOGE(A2DP_CB_TAG, "Cannot register A2DP GAP callback %d", ret);
+        	return;
+        }
 
-        esp_a2d_register_callback(a2dp_cb_cb);
-        esp_a2d_sink_register_data_callback(a2dp_cb_data_cb);
-        esp_a2d_sink_init();
+        if ((ret = esp_a2d_register_callback(a2dp_cb_cb)) != ESP_OK)
+        {
+        	ESP_LOGE(A2DP_CB_TAG, "Cannot regsiter A2DP callback %d", ret);
+        	return;
+        }
 
-        esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_NONE);
+        if ((ret = esp_a2d_sink_register_data_callback(a2dp_cb_data_cb)) != ESP_OK)
+        {
+        	ESP_LOGE(A2DP_CB_TAG, "Cannot register A2DP data callback %d", ret);
+        	return;
+        }
+
+        if ((ret = esp_a2d_sink_init()) != ESP_OK)
+        {
+        	ESP_LOGE(A2DP_CB_TAG, "Cannot init A2DP sink %d", ret);
+        	return;
+        }
+
+        if ((ret = esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_NONE)) != ESP_OK)
+        {
+        	ESP_LOGE(A2DP_CB_TAG, "Cannot set scan mode %d", ret);
+        	return;
+        }
 
         /* create and start heart beat timer */
         tmr = xTimerCreate(
@@ -262,7 +286,31 @@ static void a2dp_cb_state_connected(uint16_t event, void *param)
         break;
 
     case ESP_A2D_AUDIO_CFG_EVT:
-        // TODO xxxx not suppposed to occur for A2DP source
+        ESP_LOGI(
+        	A2DP_CB_TAG,
+			"A2DP audio stream configuration, codec type %d",
+			a2d->audio_cfg.mcc.type);
+        // for now only SBC stream is supported
+        if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC)
+        {
+            int sample_rate = 16000;
+            char oct0 = a2d->audio_cfg.mcc.cie.sbc[0];
+            if (oct0 & (0x01 << 6))
+                sample_rate = 32000;
+            else if (oct0 & (0x01 << 5))
+                sample_rate = 44100;
+            else if (oct0 & (0x01 << 4))
+                sample_rate = 48000;
+
+            ESP_LOGI(
+            	A2DP_CB_TAG,
+				"Configure audio player %x-%x-%x-%x",
+                a2d->audio_cfg.mcc.cie.sbc[0],
+                a2d->audio_cfg.mcc.cie.sbc[1],
+                a2d->audio_cfg.mcc.cie.sbc[2],
+                a2d->audio_cfg.mcc.cie.sbc[3]);
+            ESP_LOGI(A2DP_CB_TAG, "Audio player configured, sample rate=%d", sample_rate);
+        }
         break;
 
     case ESP_A2D_MEDIA_CTRL_ACK_EVT:

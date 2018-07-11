@@ -10,6 +10,8 @@ void switch_to_a2dp(size_t idx)
 {
 	esp_err_t ret;
 
+	ESP_LOGI(SWITCHING_TAG, "SWITCH!");
+
 	if ((ret = esp_ble_gap_disconnect(bda[idx])) != ESP_OK)
 	{
 		ESP_LOGE(
@@ -65,7 +67,7 @@ void handle_rms_notification()
 	{
 		ESP_LOGI(
 			SWITCHING_TAG,
-			"Better than current, switching from %d to %d",
+			"Better than current, SSSswitching from %d to %d",
 			current_a2dp_idx,
 			max_idx);
 		switch_to_a2dp(max_idx);
