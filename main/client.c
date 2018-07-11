@@ -23,6 +23,7 @@
 // My includes
 #include "gattc.h"
 #include "tags.h"
+#include "a2dp_cb.h"
 
 
 void app_main()
@@ -108,6 +109,14 @@ void app_main()
 			esp_err_to_name(ret));
         return;
     }
+
+    bt_app_task_start_up();
+    bt_app_work_dispatch(
+    	bt_av_hdl_stack_evt,
+		BT_APP_EVT_STACK_UP,
+		NULL,
+		0,
+		NULL);
 
     if ((ret = esp_ble_gatt_set_local_mtu(500)) != ESP_OK)
     {

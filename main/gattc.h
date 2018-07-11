@@ -31,7 +31,11 @@
 #define PROFILE_A_APP_ID 0
 #define INVALID_HANDLE   0
 
+#define NUM_SERVERS 2
+
 extern uint8_t current_rms;
+extern esp_bd_addr_t bda[NUM_SERVERS];
+extern uint8_t rms[NUM_SERVERS];
 
 typedef struct
 {

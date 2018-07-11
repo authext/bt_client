@@ -1,7 +1,6 @@
 #include "gattc.h"
 #include "tags.h"
-
-#define LEN_OF(x) (sizeof(x) / sizeof(x[0]))
+#include "switching.h"
 
 static esp_bt_uuid_t remote_filter_service_uuid =
 {
@@ -21,57 +20,21 @@ static esp_bt_uuid_t remote_filter_char_uuid =
     },
 };
 
-static esp_bd_addr_t bda[] =
+esp_bd_addr_t bda[NUM_SERVERS] =
 {
 	{ 0x30, 0xae, 0xa4, 0x3c, 0x3d, 0xf2 },
 	{ 0x30, 0xae, 0xa4, 0x3c, 0x89, 0xf6 },
 };
 
-static uint8_t rms[] =
+uint8_t rms[NUM_SERVERS] =
 {
 	0,
 	0
 };
 
-int current_a2dp_idx = -1;
-static uint16_t rms_handle;
 
 static bool connect    = false;
 static bool get_server = false;
-
-void switch_to_a2dp(size_t idx)
-{
-	esp_ble_gap_disconnect(bda[idx]);
-
-	current_a2dp_idx = idx;
-}
-
-void handle_rms_notification()
-{
-	uint8_t max_rms = 0;
-	size_t max_idx = 0;
-
-	for (size_t i = 0; i < LEN_OF(rms); i++)
-	{
-		if (rms[i] > max_rms)
-		{
-			max_rms = rms[i];
-			max_idx = i;
-		}
-	}
-
-	ESP_LOGI(GATTC_TAG, "Max rms from %d: %d", max_idx, max_rms);
-
-	if (max_rms > rms[current_a2dp_idx])
-	{
-		ESP_LOGI(
-			GATTC_TAG,
-			"Better than current, switching from %d to %d",
-			current_a2dp_idx,
-			max_idx);
-		switch_to_a2dp(max_idx);
-	}
-}
 
 /* One gatt-based profile one app_id and one gattc_if, this array will store the gattc_if returned by ESP_GATTS_REG_EVT */
 gattc_profile_inst profile_tab[PROFILE_NUM] =
@@ -94,7 +57,7 @@ void gattc_profile_event_handler(
     {
         ESP_LOGI(GATTC_TAG, "REG_EVT");
         esp_err_t ret;
-        for (size_t i = 0; i < LEN_OF(bda); i++)
+        for (size_t i = 0; i < NUM_SERVERS; i++)
         {
         	ret = esp_ble_gattc_open(
         		profile_tab[PROFILE_A_APP_ID].gattc_if,
@@ -255,7 +218,6 @@ void gattc_profile_event_handler(
 				}
 
 				ESP_LOGI(GATTC_TAG, "char handle %x", char_elem_result->char_handle);
-				rms_handle = char_elem_result->char_handle;
 				if (status != ESP_GATT_OK)
 				{
 					ESP_LOGE(GATTC_TAG, "esp_ble_gattc_read_char");
