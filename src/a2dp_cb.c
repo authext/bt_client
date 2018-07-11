@@ -1,37 +1,69 @@
+// C includes
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+// Unix includes
+#include <unistd.h>
+// FreeRTOS includes
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
+// ESP System includes
 #include "esp_system.h"
+// Logging includes
 #include "esp_log.h"
+// Bluetooth includes
 #include "esp_bt.h"
-#include "a2dp_core.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
-#include "tags.h"
+// My includes
+#include "a2dp_core.h"
 #include "a2dp_cb.h"
+#include "tags.h"
+
+
+#define BT_APP_HEART_BEAT_EVT 0xff00
+
+
+typedef enum
+{
+    APP_AV_STATE_IDLE,
+    APP_AV_STATE_CONNECTING,
+    APP_AV_STATE_CONNECTED,
+    APP_AV_STATE_DISCONNECTING,
+	APP_AV_STATE_DISCONNECTED,
+} a2dp_cb_state_t;
+
+/* Only valid when connected */
+typedef enum
+{
+    APP_AV_MEDIA_STATE_IDLE,
+    APP_AV_MEDIA_STATE_STARTING,
+    APP_AV_MEDIA_STATE_STARTED,
+    APP_AV_MEDIA_STATE_STOPPING,
+} a2dp_cb_media_state;
+
 
 /* A2DP application state machine handler for each state */
-static void bt_app_av_state_connecting(uint16_t event, void *param);
-static void bt_app_av_state_connected(uint16_t event, void *param);
-static void bt_app_av_state_disconnecting(uint16_t event, void *param);
-static void bt_app_av_state_disconnected(uint16_t event, void *param);
+static void a2dp_cb_state_connecting(uint16_t event, void *param);
+static void a2dp_cb_state_connected(uint16_t event, void *param);
+static void a2dp_cb_state_disconnecting(uint16_t event, void *param);
+static void a2dp_cb_state_disconnected(uint16_t event, void *param);
 
-static void bt_app_av_media_proc(uint16_t event, void *param);
-static void a2d_app_heart_beat(void *arg);
+static void a2dp_cb_media_proc(uint16_t event, void *param);
+static void a2dp_cb_heart_beat(void *arg);
 /// callback function for A2DP source
-static void bt_app_a2d_cb(
+static void a2dp_cb_cb(
 	esp_a2d_cb_event_t event,
 	esp_a2d_cb_param_t *param);
+/// A2DP application state machine
+static void a2dp_cb_state_machine(uint16_t event, void *param);
 
 /// callback function for A2DP source audio data stream
-static void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len);
+static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len);
 
 esp_bd_addr_t peer_bda;
 int m_a2d_state = APP_AV_STATE_IDLE;
@@ -43,7 +75,7 @@ uint32_t m_pkt_cnt = 0;
 TimerHandle_t tmr;
 
 
-void bt_app_gap_cb(
+void a2dp_cb_gap_cb(
 	esp_bt_gap_cb_event_t event,
 	esp_bt_gap_cb_param_t *param)
 {
@@ -67,7 +99,7 @@ void bt_app_gap_cb(
     }
 }
 
-void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
+void a2d_cb_handle_stack_event(uint16_t event, void *p_param)
 {
     ESP_LOGD(A2DP_CB_TAG, "%s evt %d", __func__, event);
 
@@ -75,10 +107,10 @@ void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
     {
     case BT_APP_EVT_STACK_UP:
     {
-        esp_bt_gap_register_callback(bt_app_gap_cb);
+        esp_bt_gap_register_callback(a2dp_cb_gap_cb);
 
-        esp_a2d_register_callback(bt_app_a2d_cb);
-        esp_a2d_sink_register_data_callback(bt_app_a2d_data_cb);
+        esp_a2d_register_callback(a2dp_cb_cb);
+        esp_a2d_sink_register_data_callback(a2dp_cb_data_cb);
         esp_a2d_sink_init();
 
         esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_NONE);
@@ -89,7 +121,7 @@ void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
 			(10000 / portTICK_RATE_MS),
             pdTRUE,
 			NULL,
-			a2d_app_heart_beat);
+			a2dp_cb_heart_beat);
         xTimerStart(tmr, portMAX_DELAY);
         break;
     }
@@ -104,31 +136,31 @@ void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
     }
 }
 
-static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
+static void a2dp_cb_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 {
-    bt_app_work_dispatch(
-    	bt_app_av_sm_hdlr,
+    a2dp_core_dispatch(
+    	a2dp_cb_state_machine,
 		event,
 		param,
 		sizeof(esp_a2d_cb_param_t));
 }
 
-static void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
+static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len)
 {
 	if (++m_pkt_cnt % 100 == 0)
 		ESP_LOGI(A2DP_CB_TAG, "Received %u packets", m_pkt_cnt);
 }
 
-static void a2d_app_heart_beat(void *arg)
+static void a2dp_cb_heart_beat(void *arg)
 {
-    bt_app_work_dispatch(
-    	bt_app_av_sm_hdlr,
+    a2dp_core_dispatch(
+    	a2dp_cb_state_machine,
 		BT_APP_HEART_BEAT_EVT,
 		NULL,
 		0);
 }
 
-void bt_app_av_sm_hdlr(uint16_t event, void *param)
+void a2dp_cb_state_machine(uint16_t event, void *param)
 {
     ESP_LOGI(
     	A2DP_CB_TAG,
@@ -143,19 +175,19 @@ void bt_app_av_sm_hdlr(uint16_t event, void *param)
         break;
 
     case APP_AV_STATE_CONNECTING:
-        bt_app_av_state_connecting(event, param);
+        a2dp_cb_state_connecting(event, param);
         break;
 
     case APP_AV_STATE_CONNECTED:
-        bt_app_av_state_connected(event, param);
+        a2dp_cb_state_connected(event, param);
         break;
 
     case APP_AV_STATE_DISCONNECTING:
-        bt_app_av_state_disconnecting(event, param);
+        a2dp_cb_state_disconnecting(event, param);
         break;
 
     case APP_AV_STATE_DISCONNECTED:
-    	bt_app_av_state_disconnected(event, param);
+    	a2dp_cb_state_disconnected(event, param);
     	break;
 
     default:
@@ -168,7 +200,7 @@ void bt_app_av_sm_hdlr(uint16_t event, void *param)
     }
 }
 
-static void bt_app_av_state_connecting(uint16_t event, void *param)
+static void a2dp_cb_state_connecting(uint16_t event, void *param)
 {
     esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
 
@@ -206,7 +238,7 @@ static void bt_app_av_state_connecting(uint16_t event, void *param)
     }
 }
 
-static void bt_app_av_state_connected(uint16_t event, void *param)
+static void a2dp_cb_state_connected(uint16_t event, void *param)
 {
     esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
 
@@ -230,7 +262,7 @@ static void bt_app_av_state_connected(uint16_t event, void *param)
 
     case ESP_A2D_MEDIA_CTRL_ACK_EVT:
     case BT_APP_HEART_BEAT_EVT:
-        bt_app_av_media_proc(event, param);
+        a2dp_cb_media_proc(event, param);
         break;
 
     default:
@@ -239,7 +271,7 @@ static void bt_app_av_state_connected(uint16_t event, void *param)
     }
 }
 
-static void bt_app_av_state_disconnecting(uint16_t event, void *param)
+static void a2dp_cb_state_disconnecting(uint16_t event, void *param)
 {
     esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
 
@@ -265,12 +297,12 @@ static void bt_app_av_state_disconnecting(uint16_t event, void *param)
     }
 }
 
-static void bt_app_av_state_disconnected(uint16_t event, void *param)
+static void a2dp_cb_state_disconnected(uint16_t event, void *param)
 {
 
 }
 
-static void bt_app_av_media_proc(uint16_t event, void *param)
+static void a2dp_cb_media_proc(uint16_t event, void *param)
 {
     esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
 

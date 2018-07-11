@@ -110,9 +110,9 @@ void app_main()
         return;
     }
 
-    bt_app_task_start_up();
-    bt_app_work_dispatch(
-    	bt_av_hdl_stack_evt,
+    a2dp_core_start();
+    a2dp_core_dispatch(
+    	a2d_cb_handle_stack_event,
 		BT_APP_EVT_STACK_UP,
 		NULL,
 		0);
