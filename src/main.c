@@ -77,7 +77,7 @@ void app_main()
 			esp_err_to_name(ret));
         return;
     }
-
+/*
     //register the  callback function to the gap module
     if ((ret = esp_ble_gap_register_callback(esp_gap_cb)) != ESP_OK)
     {
@@ -109,7 +109,7 @@ void app_main()
 			esp_err_to_name(ret));
         return;
     }
-
+*/
     a2dp_core_start();
     a2dp_core_dispatch(
     	a2d_cb_handle_stack_event,
@@ -117,11 +117,16 @@ void app_main()
 		NULL,
 		0);
 
-    if ((ret = esp_ble_gatt_set_local_mtu(500)) != ESP_OK)
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    a2d_cb_connect(bda[1]);
+
+/*    if ((ret = esp_ble_gatt_set_local_mtu(500)) != ESP_OK)
     {
         ESP_LOGE(
         	CLIENT_TAG,
 			"set local  MTU failed, error code = %x",
 			ret);
     }
+    */
 }

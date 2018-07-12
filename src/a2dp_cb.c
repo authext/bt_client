@@ -118,6 +118,7 @@ void a2d_cb_handle_stack_event(uint16_t event, void *p_param)
     {
     case A2D_CB_EVENT_STACK_UP:
     {
+    	esp_bt_dev_set_device_name("CLIENT");
         if ((ret = esp_bt_gap_register_callback(a2dp_cb_gap_cb)) != ESP_OK)
         {
         	ESP_LOGE(A2DP_CB_TAG, "Cannot register A2DP GAP callback %d", ret);
@@ -142,7 +143,7 @@ void a2d_cb_handle_stack_event(uint16_t event, void *p_param)
         	return;
         }
 
-        if ((ret = esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_NONE)) != ESP_OK)
+        if ((ret = esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE)) != ESP_OK)
         {
         	ESP_LOGE(A2DP_CB_TAG, "Cannot set scan mode %d", ret);
         	return;
@@ -180,8 +181,23 @@ static void a2dp_cb_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 
 static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len)
 {
+	static uint32_t sum_len = 0;
+	static uint16_t counter = 0;
+
+	for (int i = 0; i < len / 2; i++)
+	{
+		uint16_t value = 0;
+		value |= data[2 * i + 0];
+		value |= data[2 * i + 1] << 8;
+		if (value != counter)
+			ESP_LOGE(A2DP_CB_TAG, "Expected %hx, got %hx", counter, value);
+		counter++;
+	}
+
+	sum_len += len;
+
 	if (++m_pkt_cnt % 100 == 0)
-		ESP_LOGI(A2DP_CB_TAG, "Received %u packets", m_pkt_cnt);
+		ESP_LOGI(A2DP_CB_TAG, "RECEIVED PACKETS %u (%uB)", m_pkt_cnt, sum_len);
 }
 
 static void a2dp_cb_heart_beat(void *arg)
@@ -360,9 +376,10 @@ static void a2dp_cb_media_proc(uint16_t event, void *param)
         if (event == BT_APP_HEART_BEAT_EVT)
         {
             ESP_LOGI(A2DP_CB_TAG, "a2dp media ready checking ...");
-            esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_CHECK_SRC_RDY);
+            esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_START);
+            m_media_state = A2DP_CB_MEDIA_STATE_STARTING;
         }
-        else if (event == ESP_A2D_MEDIA_CTRL_ACK_EVT)
+        /*else if (event == ESP_A2D_MEDIA_CTRL_ACK_EVT)
         {
         	const bool is_cmd_ready = a2d->media_ctrl_stat.cmd == ESP_A2D_MEDIA_CTRL_CHECK_SRC_RDY;
         	const bool is_status_success = a2d->media_ctrl_stat.status == ESP_A2D_MEDIA_CTRL_ACK_SUCCESS;
@@ -372,7 +389,7 @@ static void a2dp_cb_media_proc(uint16_t event, void *param)
                 esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_START);
                 m_media_state = A2DP_CB_MEDIA_STATE_STARTING;
             }
-        }
+        }*/
         break;
 
     case A2DP_CB_MEDIA_STATE_STARTING:
@@ -401,7 +418,7 @@ static void a2dp_cb_media_proc(uint16_t event, void *param)
             if (++m_intv_cnt >= 10)
             {
                 ESP_LOGI(A2DP_CB_TAG, "a2dp media stopping...");
-                esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
+                //esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
                 m_media_state = A2DP_CB_MEDIA_STATE_STOPPING;
                 m_intv_cnt = 0;
             }
