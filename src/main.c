@@ -112,14 +112,14 @@ void app_main()
 */
     a2dp_core_start();
     a2dp_core_dispatch(
-    	a2d_cb_handle_stack_event,
+    	a2dp_cb_handle_stack_event,
 		A2D_CB_EVENT_STACK_UP,
 		NULL,
 		0);
 
     vTaskDelay(5000 / portTICK_PERIOD_MS);
 
-    a2d_cb_connect(bda[1]);
+    a2dp_cb_connect(bda[1]);
 
 /*    if ((ret = esp_ble_gatt_set_local_mtu(500)) != ESP_OK)
     {

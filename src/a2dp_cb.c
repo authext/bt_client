@@ -51,7 +51,6 @@ static void a2dp_cb_state_connecting(uint16_t event, void *param);
 static void a2dp_cb_state_connected(uint16_t event, void *param);
 static void a2dp_cb_state_disconnecting(uint16_t event, void *param);
 
-static void a2dp_cb_media_proc(uint16_t event, void *param);
 static void a2dp_cb_heart_beat(void *arg);
 /// callback function for A2DP source
 static void a2dp_cb_cb(
@@ -66,14 +65,13 @@ static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len);
 static esp_bd_addr_t peer_bda;
 static int m_a2d_state = A2DP_CB_STATE_IDLE;
 static int m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
-static int m_intv_cnt = 0;
 static int m_connecting_intv = 0;
 static uint32_t m_pkt_cnt = 0;
 
 static TimerHandle_t tmr;
 
 
-esp_err_t a2d_cb_connect(const esp_bd_addr_t addr)
+esp_err_t a2dp_cb_connect(const esp_bd_addr_t addr)
 {
 	memcpy(peer_bda, addr, sizeof(esp_bd_addr_t));
 
@@ -108,7 +106,7 @@ static void a2dp_cb_gap_cb(
     }
 }
 
-void a2d_cb_handle_stack_event(uint16_t event, void *p_param)
+void a2dp_cb_handle_stack_event(uint16_t event, void *p_param)
 {
     ESP_LOGD(A2DP_CB_TAG, "%s evt %d", __func__, event);
 
@@ -118,6 +116,7 @@ void a2d_cb_handle_stack_event(uint16_t event, void *p_param)
     {
     case A2D_CB_EVENT_STACK_UP:
     {
+    	ESP_LOGI(A2DP_CB_TAG, "Setting up A2DP");
     	esp_bt_dev_set_device_name("CLIENT");
         if ((ret = esp_bt_gap_register_callback(a2dp_cb_gap_cb)) != ESP_OK)
         {
@@ -246,13 +245,14 @@ static void a2dp_cb_state_connecting(uint16_t event, void *param)
     case ESP_A2D_CONNECTION_STATE_EVT:
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED)
         {
-            ESP_LOGI(A2DP_CB_TAG, "a2dp connected");
+            ESP_LOGI(A2DP_CB_TAG, "A2DP connected");
             m_a2d_state =  A2DP_CB_STATE_CONNECTED;
-            m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
+            m_media_state = A2DP_CB_MEDIA_STATE_STARTING;
         }
         else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
         {
-            m_a2d_state =  A2DP_CB_STATE_IDLE;
+        	memset(peer_bda, 0, sizeof(esp_bd_addr_t));
+            m_a2d_state = A2DP_CB_STATE_IDLE;
         }
         break;
 
@@ -297,6 +297,7 @@ static void a2dp_cb_state_connecting(uint16_t event, void *param)
             m_a2d_state = A2DP_CB_STATE_IDLE;
             m_connecting_intv = 0;
             ESP_LOGW(A2DP_CB_TAG, "Failed to connect");
+            esp_a2d_sink_disconnect(peer_bda);
         }
         break;
 
@@ -310,11 +311,12 @@ static void a2dp_cb_state_connected(uint16_t event, void *param)
 {
     esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
 
-    switch (event) {
+    switch (event)
+    {
     case ESP_A2D_CONNECTION_STATE_EVT:
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
         {
-            ESP_LOGI(A2DP_CB_TAG, "a2dp disconnected");
+            ESP_LOGI(A2DP_CB_TAG, "A2DP disconnected");
             m_a2d_state = A2DP_CB_STATE_IDLE;
         }
         break;
@@ -324,37 +326,8 @@ static void a2dp_cb_state_connected(uint16_t event, void *param)
             m_pkt_cnt = 0;
         break;
 
-    case ESP_A2D_AUDIO_CFG_EVT:
-        ESP_LOGI(
-        	A2DP_CB_TAG,
-			"A2DPXX audio stream configuration, codec type %d",
-			a2d->audio_cfg.mcc.type);
-        // for now only SBC stream is supported
-        if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC)
-        {
-            int sample_rate = 16000;
-            char oct0 = a2d->audio_cfg.mcc.cie.sbc[0];
-            if (oct0 & (0x01 << 6))
-                sample_rate = 32000;
-            else if (oct0 & (0x01 << 5))
-                sample_rate = 44100;
-            else if (oct0 & (0x01 << 4))
-                sample_rate = 48000;
-
-            ESP_LOGI(
-            	A2DP_CB_TAG,
-				"Configure audio player %x-%x-%x-%x",
-                a2d->audio_cfg.mcc.cie.sbc[0],
-                a2d->audio_cfg.mcc.cie.sbc[1],
-                a2d->audio_cfg.mcc.cie.sbc[2],
-                a2d->audio_cfg.mcc.cie.sbc[3]);
-            ESP_LOGI(A2DP_CB_TAG, "Audio player configured, sample rate=%d", sample_rate);
-        }
-        break;
-
     case ESP_A2D_MEDIA_CTRL_ACK_EVT:
     case BT_APP_HEART_BEAT_EVT:
-        a2dp_cb_media_proc(event, param);
         break;
 
     default:
@@ -385,88 +358,6 @@ static void a2dp_cb_state_disconnecting(uint16_t event, void *param)
 
     default:
         ESP_LOGE(A2DP_CB_TAG, "%s unhandled evt %d", __func__, event);
-        break;
-    }
-}
-
-static void a2dp_cb_media_proc(uint16_t event, void *param)
-{
-    esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
-
-    switch (m_media_state)
-    {
-    case A2DP_CB_MEDIA_STATE_IDLE:
-        if (event == BT_APP_HEART_BEAT_EVT)
-        {
-            ESP_LOGI(A2DP_CB_TAG, "a2dp media ready checking ...");
-            esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_START);
-            m_media_state = A2DP_CB_MEDIA_STATE_STARTING;
-        }
-        /*else if (event == ESP_A2D_MEDIA_CTRL_ACK_EVT)
-        {
-        	const bool is_cmd_ready = a2d->media_ctrl_stat.cmd == ESP_A2D_MEDIA_CTRL_CHECK_SRC_RDY;
-        	const bool is_status_success = a2d->media_ctrl_stat.status == ESP_A2D_MEDIA_CTRL_ACK_SUCCESS;
-            if (is_cmd_ready && is_status_success)
-            {
-                ESP_LOGI(A2DP_CB_TAG, "a2dp media ready, starting ...");
-                esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_START);
-                m_media_state = A2DP_CB_MEDIA_STATE_STARTING;
-            }
-        }*/
-        break;
-
-    case A2DP_CB_MEDIA_STATE_STARTING:
-        if (event == ESP_A2D_MEDIA_CTRL_ACK_EVT)
-        {
-        	const bool is_cmd_start = a2d->media_ctrl_stat.cmd == ESP_A2D_MEDIA_CTRL_START;
-        	const bool is_status_success = a2d->media_ctrl_stat.status == ESP_A2D_MEDIA_CTRL_ACK_SUCCESS;
-            if (is_cmd_start && is_status_success)
-            {
-                ESP_LOGI(A2DP_CB_TAG, "a2dp media start successfully.");
-                m_intv_cnt = 0;
-                m_media_state = A2DP_CB_MEDIA_STATE_STARTED;
-            }
-            else
-            {
-                // not started succesfully, transfer to idle state
-                ESP_LOGI(A2DP_CB_TAG, "a2dp media start failed.");
-                m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
-            }
-        }
-        break;
-
-    case A2DP_CB_MEDIA_STATE_STARTED:
-        if (event == BT_APP_HEART_BEAT_EVT)
-        {
-            if (++m_intv_cnt >= 10)
-            {
-                ESP_LOGI(A2DP_CB_TAG, "a2dp media stopping...");
-                //esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
-                m_media_state = A2DP_CB_MEDIA_STATE_STOPPING;
-                m_intv_cnt = 0;
-            }
-        }
-        break;
-
-    case A2DP_CB_MEDIA_STATE_STOPPING:
-        if (event == ESP_A2D_MEDIA_CTRL_ACK_EVT)
-        {
-        	const bool is_cmd_stop = a2d->media_ctrl_stat.cmd == ESP_A2D_MEDIA_CTRL_STOP;
-        	const bool is_status_success = a2d->media_ctrl_stat.status == ESP_A2D_MEDIA_CTRL_ACK_SUCCESS;
-
-            if (is_cmd_stop && is_status_success)
-            {
-                ESP_LOGI(A2DP_CB_TAG, "a2dp media stopped successfully, disconnecting...");
-                m_media_state = A2DP_CB_MEDIA_STATE_IDLE;
-                esp_a2d_sink_disconnect(peer_bda);
-                m_a2d_state = A2DP_CB_STATE_DISCONNECTING;
-            }
-            else
-            {
-                ESP_LOGI(A2DP_CB_TAG, "a2dp media stopping...");
-                esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
-            }
-        }
         break;
     }
 }

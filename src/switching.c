@@ -35,7 +35,7 @@ void switch_to_a2dp(size_t idx)
 		first_time = true;
 	}
 
-	if ((ret = a2d_cb_connect(bda[idx])) != ESP_OK)
+	if ((ret = a2dp_cb_connect(bda[idx])) != ESP_OK)
 	{
 		ESP_LOGE(
 			SWITCHING_TAG,
