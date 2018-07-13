@@ -182,22 +182,14 @@ static void a2dp_cb_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len)
 {
 	static uint32_t sum_len = 0;
-	static uint16_t counter = 0;
 
-	for (int i = 0; i < len / 2; i++)
-	{
-		uint16_t value = 0;
-		value |= data[2 * i + 0];
-		value |= data[2 * i + 1] << 8;
-		if (value != counter)
-			ESP_LOGE(A2DP_CB_TAG, "Expected %hx, got %hx", counter, value);
-		counter++;
-	}
+	if (len == 0 || data == NULL)
+		return;
 
 	sum_len += len;
 
 	if (++m_pkt_cnt % 100 == 0)
-		ESP_LOGI(A2DP_CB_TAG, "RECEIVED PACKETS %u (%uB)", m_pkt_cnt, sum_len);
+		ESP_LOGI(A2DP_CB_TAG, "RECEIVED PACKETS 0x%08x (0x%08x B)", m_pkt_cnt, sum_len);
 }
 
 static void a2dp_cb_heart_beat(void *arg)
@@ -265,15 +257,46 @@ static void a2dp_cb_state_connecting(uint16_t event, void *param)
         break;
 
     case ESP_A2D_AUDIO_STATE_EVT:
-    case ESP_A2D_AUDIO_CFG_EVT:
     case ESP_A2D_MEDIA_CTRL_ACK_EVT:
         break;
+
+    case ESP_A2D_AUDIO_CFG_EVT:
+    	ESP_LOGI(
+    		A2DP_CB_TAG,
+    		"A2DP audio stream configuration, codec type %d",
+			a2d->audio_cfg.mcc.type);
+
+		// for now only SBC stream is supported
+		if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC)
+		{
+			int sample_rate = 16000;
+			char oct0 = a2d->audio_cfg.mcc.cie.sbc[0];
+			if (oct0 & (0x01 << 6))
+				sample_rate = 32000;
+			else if (oct0 & (0x01 << 5))
+				sample_rate = 44100;
+			else if (oct0 & (0x01 << 4))
+				sample_rate = 48000;
+
+			ESP_LOGI(A2DP_CB_TAG,
+				"Configure audio player %02x-%02x-%02x-%02x",
+				a2d->audio_cfg.mcc.cie.sbc[0],
+				a2d->audio_cfg.mcc.cie.sbc[1],
+				a2d->audio_cfg.mcc.cie.sbc[2],
+				a2d->audio_cfg.mcc.cie.sbc[3]);
+			ESP_LOGI(
+				A2DP_CB_TAG,
+				"Audio player configured, sample rate=%d",
+				sample_rate);
+		}
+    	break;
 
     case BT_APP_HEART_BEAT_EVT:
         if (++m_connecting_intv >= 2)
         {
             m_a2d_state = A2DP_CB_STATE_IDLE;
             m_connecting_intv = 0;
+            ESP_LOGW(A2DP_CB_TAG, "Failed to connect");
         }
         break;
 
@@ -304,7 +327,7 @@ static void a2dp_cb_state_connected(uint16_t event, void *param)
     case ESP_A2D_AUDIO_CFG_EVT:
         ESP_LOGI(
         	A2DP_CB_TAG,
-			"A2DP audio stream configuration, codec type %d",
+			"A2DPXX audio stream configuration, codec type %d",
 			a2d->audio_cfg.mcc.type);
         // for now only SBC stream is supported
         if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC)
