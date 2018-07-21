@@ -110,7 +110,7 @@ void app_main()
         return;
     }
 
-    if ((ret = esp_ble_gattc_app_register(PROFILE_A_APP_ID)) != ESP_OK)
+    if ((ret = esp_ble_gattc_app_register(0)) != ESP_OK)
     {
         ESP_LOGE(
         	CLIENT_TAG,

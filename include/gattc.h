@@ -26,9 +26,6 @@
 
 #define REMOTE_SERVICE_UUID        0x00FF
 #define REMOTE_NOTIFY_CHAR_UUID    0xFF01
-#define PROFILE_NUM      1
-#define PROFILE_A_APP_ID 0
-#define INVALID_HANDLE   0
 
 #define NUM_SERVERS 2
 
@@ -48,7 +45,7 @@ typedef struct
     esp_bd_addr_t remote_bda;
 } gattc_profile_inst;
 
-extern gattc_profile_inst profile_tab[PROFILE_NUM];
+extern gattc_profile_inst profile;
 
 void esp_gap_cb(
 	esp_gap_ble_cb_event_t event,

@@ -19,13 +19,10 @@ uint8_t rms[NUM_SERVERS] =
 
 
 /* One gatt-based profile one app_id and one gattc_if, this array will store the gattc_if returned by ESP_GATTS_REG_EVT */
-gattc_profile_inst profile_tab[PROFILE_NUM] =
+gattc_profile_inst profile =
 {
-    [PROFILE_A_APP_ID] =
-    {
-        .gattc_cb = gattc_profile_event_handler,
-        .gattc_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
-    },
+	.gattc_cb = gattc_profile_event_handler,
+    .gattc_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
 };
 
 void gattc_profile_event_handler(
@@ -42,7 +39,7 @@ void gattc_profile_event_handler(
         for (size_t i = 0; i < NUM_SERVERS; i++)
         {
         	ret = esp_ble_gattc_open(
-        		profile_tab[PROFILE_A_APP_ID].gattc_if,
+        		profile.gattc_if,
         		bda[i],
         		BLE_ADDR_TYPE_PUBLIC,
         		true);
@@ -65,9 +62,9 @@ void gattc_profile_event_handler(
 			"ESP_GATTC_CONNECT_EVT conn_id %d, if %d",
 			param->connect.conn_id,
 			gattc_if);
-        profile_tab[PROFILE_A_APP_ID].conn_id = param->connect.conn_id;
+        profile.conn_id = param->connect.conn_id;
         memcpy(
-        	profile_tab[PROFILE_A_APP_ID].remote_bda,
+        	profile.remote_bda,
 			param->connect.remote_bda,
 			sizeof(esp_bd_addr_t));
         ESP_LOGI(
@@ -75,7 +72,7 @@ void gattc_profile_event_handler(
 			"REMOTE BDA:");
         esp_log_buffer_hex(
         	GATTC_TAG,
-			profile_tab[PROFILE_A_APP_ID].remote_bda,
+			profile.remote_bda,
 			sizeof(esp_bd_addr_t));
         esp_err_t ret;
         if ((ret = esp_ble_gattc_send_mtu_req(gattc_if, param->connect.conn_id)) != ESP_OK)
@@ -185,7 +182,7 @@ void esp_gattc_cb(
     {
     	if (param->reg.status == ESP_GATT_OK)
     	{
-    		profile_tab[param->reg.app_id].gattc_if = gattc_if;
+    		profile.gattc_if = gattc_if;
     	}
         else
     	{
@@ -197,16 +194,10 @@ void esp_gattc_cb(
     	}
     }
 
+	const bool is_none = gattc_if == ESP_GATT_IF_NONE;
+	const bool is_this = gattc_if == profile.gattc_if;
 
-    /* If the gattc_if equal to profile A, call profile A cb handler,
-     * so here call each profile's callback */
-	for (int idx = 0; idx < PROFILE_NUM; idx++)
-	{
-		const bool is_none = gattc_if == ESP_GATT_IF_NONE;
-		const bool is_this = gattc_if == profile_tab[idx].gattc_if;
-
-		/* ESP_GATT_IF_NONE, not specify a certain gatt_if, need to call every profile cb function */
-		if ((is_none || is_this) && profile_tab[idx].gattc_cb)
-				profile_tab[idx].gattc_cb(event, gattc_if, param);
-	}
+	/* ESP_GATT_IF_NONE, not specify a certain gatt_if, need to call every profile cb function */
+	if ((is_none || is_this) && profile.gattc_cb)
+			profile.gattc_cb(event, gattc_if, param);
 }

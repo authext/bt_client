@@ -186,7 +186,7 @@ static void glue_handler(void *_)
 				ESP_LOGI(GLUE_TAG, "A2DP_TO_BLE 2 -> 3");
 				glue_state = GLUE_STATE_A2DP_TO_BLE_1;
 				esp_ble_gattc_open(
-					profile_tab[0].gattc_if,
+					profile.gattc_if,
 					first_addr,
 					BLE_ADDR_TYPE_PUBLIC,
 					true);
