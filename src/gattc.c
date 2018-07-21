@@ -4,23 +4,6 @@
 
 static const char *const GATTC_TAG = "GATT_CLIENT";
 
-static esp_bt_uuid_t remote_filter_service_uuid =
-{
-    .len = ESP_UUID_LEN_16,
-    .uuid =
-    {
-    	.uuid16 = REMOTE_SERVICE_UUID,
-    },
-};
-
-static esp_bt_uuid_t remote_filter_char_uuid =
-{
-    .len = ESP_UUID_LEN_16,
-    .uuid =
-    {
-    	.uuid16 = REMOTE_NOTIFY_CHAR_UUID,
-    },
-};
 
 esp_bd_addr_t bda[NUM_SERVERS] =
 {
@@ -34,9 +17,6 @@ uint8_t rms[NUM_SERVERS] =
 	0
 };
 
-
-static bool connect    = false;
-static bool get_server = false;
 
 /* One gatt-based profile one app_id and one gattc_if, this array will store the gattc_if returned by ESP_GATTS_REG_EVT */
 gattc_profile_inst profile_tab[PROFILE_NUM] =
@@ -156,8 +136,6 @@ void gattc_profile_event_handler(
     	break;
 
     case ESP_GATTC_DISCONNECT_EVT:
-        connect = false;
-        get_server = false;
         ESP_LOGI(
         	GATTC_TAG,
 			"ESP_GATTC_DISCONNECT_EVT, reason = %d",
