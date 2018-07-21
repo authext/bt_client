@@ -35,7 +35,6 @@ typedef enum
 	GLUE_STATE_A2DP_TO_A2DP_1,
 	GLUE_STATE_A2DP_TO_A2DP_2,
 	GLUE_STATE_A2DP_TO_A2DP_3,
-	GLUE_STATE_A2DP_TO_A2DP_4,
 
 	GLUE_STATE_A2DP_TO_BLE_0,
 	GLUE_STATE_A2DP_TO_BLE_1,
@@ -151,22 +150,8 @@ static void glue_handler(void *_)
 		case GLUE_STATE_A2DP_TO_A2DP_3:
 			if (msg == GLUE_MSG_A2DP_CONNECTED)
 			{
-				// Started media, connecting other BLE
-				ESP_LOGI(GLUE_TAG, "A2DP_TO_A2DP 3 -> 4");
-				glue_state = GLUE_STATE_A2DP_TO_A2DP_4;
-				esp_ble_gattc_open(
-					profile_tab[0].gattc_if,
-					first_addr,
-					BLE_ADDR_TYPE_PUBLIC,
-					true);
-			}
-			break;
-
-		case GLUE_STATE_A2DP_TO_A2DP_4:
-			if (msg == GLUE_MSG_BLE_CONNECTED)
-			{
-				// Connected BLE
-				ESP_LOGI(GLUE_TAG, "A2DP_TO_A2DP 4 -> IDLE");
+				// Connected A2DP, connecting other BLE
+				ESP_LOGI(GLUE_TAG, "A2DP_TO_A2DP 3 -> IDLE");
 				glue_state = GLUE_STATE_IDLE;
 			}
 			break;

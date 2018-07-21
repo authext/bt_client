@@ -195,6 +195,7 @@ static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len)
 	if (m_pkt_cnt % 1000 == 0)
 	{
 		int a = rand() % 4 + 1;
+		printf("(A2DP) I have a rms of %d", a);
 		if (a > 2)
 			handle_rms_notification();
 	}
