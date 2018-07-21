@@ -24,6 +24,7 @@
 #include "a2dp_cb.h"
 #include "tags.h"
 #include "glue.h"
+#include "switching.h"
 
 
 #define BT_APP_HEART_BEAT_EVT 0xff00
@@ -190,6 +191,13 @@ static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len)
 
 	if (++m_pkt_cnt % 100 == 0)
 		ESP_LOGI(A2DP_CB_TAG, "RECEIVED PACKETS 0x%08x (0x%08x B)", m_pkt_cnt, sum_len);
+
+	if (m_pkt_cnt % 1000 == 0)
+	{
+		int a = rand() % 4 + 1;
+		if (a > 2)
+			handle_rms_notification();
+	}
 }
 
 static void a2dp_cb_heart_beat(void *arg)
@@ -316,17 +324,24 @@ static void a2dp_cb_state_connected(uint16_t event, void *param)
     switch (event)
     {
     case ESP_A2D_CONNECTION_STATE_EVT:
-        if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
+        if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTING)
         {
-            ESP_LOGI(A2DP_CB_TAG, "A2DP disconnected");
-            m_a2d_state = A2DP_CB_STATE_IDLE;
-            glue_notify_a2dp_disconnected();
+            ESP_LOGI(A2DP_CB_TAG, "A2DP disconnecting");
+            m_a2d_state = A2DP_CB_STATE_DISCONNECTING;
+            glue_notify_a2dp_disconnecting();
         }
         break;
 
     case ESP_A2D_AUDIO_STATE_EVT:
         if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STARTED)
-            m_pkt_cnt = 0;
+        {
+        	m_pkt_cnt = 0;
+        }
+        else if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STOPPED)
+        {
+        	glue_notify_a2dp_media_stopped();
+        }
+
         break;
 
     case ESP_A2D_MEDIA_CTRL_ACK_EVT:
@@ -348,8 +363,9 @@ static void a2dp_cb_state_disconnecting(uint16_t event, void *param)
     case ESP_A2D_CONNECTION_STATE_EVT:
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
         {
-            ESP_LOGI(A2DP_CB_TAG, "a2dp disconnected");
+            ESP_LOGI(A2DP_CB_TAG, "A2DP disconnected");
             m_a2d_state =  A2DP_CB_STATE_IDLE;
+            glue_notify_a2dp_disconnected();
         }
         break;
 

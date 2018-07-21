@@ -2,6 +2,7 @@
 #include "gattc.h"
 #include "tags.h"
 #include "a2dp_cb.h"
+#include "glue.h"
 
 int current_a2dp_idx = -1;
 
@@ -28,5 +29,24 @@ void handle_rms_notification()
 			"Better than current, switching from %d to %d",
 			current_a2dp_idx,
 			max_idx);
+
+		if (current_a2dp_idx == -1)
+		{
+			current_a2dp_idx = max_idx;
+			glue_ble_to_a2dp(bda[current_a2dp_idx]);
+		}
+		else
+		{
+			int old_a2dp_idx = current_a2dp_idx;
+			current_a2dp_idx = max_idx;
+			glue_a2dp_to_a2dp(
+				bda[old_a2dp_idx],
+				bda[current_a2dp_idx]);
+		}
+	}
+	else if (rms[current_a2dp_idx] <= 2)
+	{
+		glue_a2dp_to_ble(bda[current_a2dp_idx]);
+		current_a2dp_idx = -1;
 	}
 }
