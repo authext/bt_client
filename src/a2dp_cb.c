@@ -22,12 +22,13 @@
 // My includes
 #include "a2dp_core.h"
 #include "a2dp_cb.h"
-#include "tags.h"
 #include "glue.h"
 #include "switching.h"
 
 
 #define BT_APP_HEART_BEAT_EVT 0xff00
+
+static const char *const A2DP_CB_TAG = "A2DP_CB";
 
 
 typedef enum

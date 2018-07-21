@@ -23,9 +23,9 @@
 // My includes
 #include "a2dp_cb.h"
 #include "gattc.h"
-#include "tags.h"
 #include "glue.h"
 
+static const char *const CLIENT_TAG = "CLIENT";
 
 void app_main()
 {

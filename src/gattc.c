@@ -1,7 +1,8 @@
 #include "gattc.h"
 #include "switching.h"
-#include "tags.h"
 #include "glue.h"
+
+static const char *const GATTC_TAG = "GATT_CLIENT";
 
 static esp_bt_uuid_t remote_filter_service_uuid =
 {

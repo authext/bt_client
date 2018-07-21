@@ -1,10 +1,10 @@
 #include "switching.h"
 #include "gattc.h"
-#include "tags.h"
 #include "a2dp_cb.h"
 #include "glue.h"
 
 int current_a2dp_idx = -1;
+static const char *const SWITCHING_TAG = "SWITCHING";
 
 void handle_rms_notification()
 {
@@ -20,7 +20,7 @@ void handle_rms_notification()
 		}
 	}
 
-	ESP_LOGI(GATTC_TAG, "Max rms from %d: %d", max_idx, max_rms);
+	ESP_LOGI(SWITCHING_TAG, "Max rms from %d: %d", max_idx, max_rms);
 
 	if (max_rms > rms[current_a2dp_idx])
 	{

@@ -23,7 +23,6 @@
 #include "esp_gatt_common_api.h"
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
-#include "tags.h"
 
 #define REMOTE_SERVICE_UUID        0x00FF
 #define REMOTE_NOTIFY_CHAR_UUID    0xFF01

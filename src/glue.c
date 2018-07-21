@@ -19,8 +19,9 @@
 // My includes
 #include "a2dp_cb.h"
 #include "glue.h"
-#include "tags.h"
 #include "gattc.h"
+
+static const char *const GLUE_TAG = "GLUE";
 
 
 typedef enum
