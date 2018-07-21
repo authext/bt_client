@@ -1,0 +1,27 @@
+#!/bin/bash
+
+python\
+	../esp-idf/components/esptool_py/esptool/esptool.py\
+	--chip esp32\
+	--port $1\
+	--baud 115200\
+	--before default_reset\
+	--after hard_reset write_flash\
+	-z\
+	--flash_mode dio\
+	--flash_freq 40m\
+	--flash_size detect\
+	0x1000 build/bootloader/bootloader.bin\
+	0x10000 build/client.bin\
+	0x8000 build/partitions_singleapp.bin
+
+winpty\
+	python\
+	../esp-idf/tools/idf_monitor.py\
+	--baud 115200\
+	--port $1\
+	--toolchain-prefix "xtensa-esp32-elf-"\
+	--make "make"\
+	--print_filter ""\
+	build/client.elf
+
