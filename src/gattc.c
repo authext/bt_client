@@ -1,6 +1,7 @@
 #include "gattc.h"
 #include "switching.h"
 #include "tags.h"
+#include "glue.h"
 
 static esp_bt_uuid_t remote_filter_service_uuid =
 {
@@ -107,6 +108,7 @@ void gattc_profile_event_handler(
         	gattc_if,
 			param->connect.remote_bda,
 			0x2a);
+        glue_notify_ble_connected();
         break;
     }
 
@@ -279,6 +281,7 @@ void gattc_profile_event_handler(
         	GATTC_TAG,
 			"ESP_GATTC_DISCONNECT_EVT, reason = %d",
 			param->disconnect.reason);
+        glue_notify_ble_disconnected();
         break;
 
     default:

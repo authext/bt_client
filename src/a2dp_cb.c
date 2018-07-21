@@ -23,6 +23,7 @@
 #include "a2dp_core.h"
 #include "a2dp_cb.h"
 #include "tags.h"
+#include "glue.h"
 
 
 #define BT_APP_HEART_BEAT_EVT 0xff00
@@ -248,6 +249,7 @@ static void a2dp_cb_state_connecting(uint16_t event, void *param)
             ESP_LOGI(A2DP_CB_TAG, "A2DP connected");
             m_a2d_state =  A2DP_CB_STATE_CONNECTED;
             m_media_state = A2DP_CB_MEDIA_STATE_STARTING;
+            glue_notify_a2dp_connected();
         }
         else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
         {
@@ -318,6 +320,7 @@ static void a2dp_cb_state_connected(uint16_t event, void *param)
         {
             ESP_LOGI(A2DP_CB_TAG, "A2DP disconnected");
             m_a2d_state = A2DP_CB_STATE_IDLE;
+            glue_notify_a2dp_disconnected();
         }
         break;
 
