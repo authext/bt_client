@@ -27,11 +27,12 @@
 #define REMOTE_SERVICE_UUID        0x00FF
 #define REMOTE_NOTIFY_CHAR_UUID    0xFF01
 
-#define NUM_SERVERS 2
+#define MAX_NUM_SERVERS 5
+extern int len_servers;
 
 extern uint8_t current_rms;
-extern esp_bd_addr_t bda[NUM_SERVERS];
-extern uint8_t rms[NUM_SERVERS];
+extern esp_bd_addr_t bda[MAX_NUM_SERVERS];
+extern uint8_t rms[MAX_NUM_SERVERS];
 
 typedef struct
 {
@@ -39,10 +40,6 @@ typedef struct
     uint16_t gattc_if;
     uint16_t app_id;
     uint16_t conn_id;
-    uint16_t service_start_handle;
-    uint16_t service_end_handle;
-    uint16_t char_handle;
-    esp_bd_addr_t remote_bda;
 } gattc_profile_inst;
 
 extern gattc_profile_inst profile;

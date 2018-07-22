@@ -24,6 +24,7 @@
 #include "a2dp_cb.h"
 #include "glue.h"
 #include "switching.h"
+#include "gattc.h"
 
 
 #define BT_APP_HEART_BEAT_EVT 0xff00
@@ -196,9 +197,9 @@ static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len)
 	if (m_pkt_cnt % 1000 == 0)
 	{
 		int a = rand() % 4 + 1;
-		printf("(A2DP) I have a rms of %d", a);
-		if (a > 2)
-			handle_rms_notification();
+		printf("(A2DP) I have a rms of %d\n", a);
+		rms[current_a2dp_idx] = a;
+		handle_rms_notification();
 	}
 }
 

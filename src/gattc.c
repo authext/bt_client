@@ -3,20 +3,32 @@
 #include "glue.h"
 
 static const char *const GATTC_TAG = "GATT_CLIENT";
+int len_servers;
 
-
-esp_bd_addr_t bda[NUM_SERVERS] =
+esp_bd_addr_t bda[MAX_NUM_SERVERS] =
 {
 	{ 0x30, 0xae, 0xa4, 0x3c, 0x3d, 0xf2 },
 	{ 0x30, 0xae, 0xa4, 0x3c, 0x89, 0xf6 },
 };
 
-uint8_t rms[NUM_SERVERS] =
-{
-	0,
-	0
-};
+uint8_t rms[MAX_NUM_SERVERS];
 
+bool is_server_equal(const esp_bd_addr_t l, const esp_bd_addr_t r)
+{
+	return memcmp(l, r, sizeof(esp_bd_addr_t)) == 0;
+}
+
+void add_server(const esp_bd_addr_t addr)
+{
+	for (int i = 0; i < len_servers; i++)
+	{
+		if (is_server_equal(bda[i], addr))
+			return;
+	}
+
+	memcpy(bda[len_servers], addr, sizeof(esp_bd_addr_t));
+	++len_servers;
+}
 
 /* One gatt-based profile one app_id and one gattc_if, this array will store the gattc_if returned by ESP_GATTS_REG_EVT */
 gattc_profile_inst profile =
@@ -35,23 +47,7 @@ void gattc_profile_event_handler(
     case ESP_GATTC_REG_EVT:
     {
         ESP_LOGI(GATTC_TAG, "REG_EVT");
-        esp_err_t ret;
-        for (size_t i = 0; i < NUM_SERVERS; i++)
-        {
-        	ret = esp_ble_gattc_open(
-        		profile.gattc_if,
-        		bda[i],
-        		BLE_ADDR_TYPE_PUBLIC,
-        		true);
-
-        	if (ret != ESP_OK)
-        	{
-        		ESP_LOGI(GATTC_TAG, "Cannot connect to %x with: %x", bda[i][5], ret);
-        	    break;
-        	}
-
-        	vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
+        esp_ble_gap_start_scanning(5);
         break;
     }
 
@@ -63,16 +59,12 @@ void gattc_profile_event_handler(
 			param->connect.conn_id,
 			gattc_if);
         profile.conn_id = param->connect.conn_id;
-        memcpy(
-        	profile.remote_bda,
-			param->connect.remote_bda,
-			sizeof(esp_bd_addr_t));
         ESP_LOGI(
         	GATTC_TAG,
 			"REMOTE BDA:");
         esp_log_buffer_hex(
         	GATTC_TAG,
-			profile.remote_bda,
+			param->connect.remote_bda,
 			sizeof(esp_bd_addr_t));
         esp_err_t ret;
         if ((ret = esp_ble_gattc_send_mtu_req(gattc_if, param->connect.conn_id)) != ESP_OK)
@@ -149,6 +141,59 @@ void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event)
     {
+    case ESP_GAP_BLE_SCAN_RESULT_EVT:
+    	if (param->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_RES_EVT)
+    	{
+			esp_log_buffer_hex(
+				GATTC_TAG,
+				param->scan_rst.bda,
+				6);
+
+			ESP_LOGI(
+				GATTC_TAG,
+				"searched Adv Data Len %d, Scan Response Len %d",
+				param->scan_rst.adv_data_len,
+				param->scan_rst.scan_rsp_len);
+
+			uint8_t adv_name_len;
+			const char *adv_name = (const char *)esp_ble_resolve_adv_data(
+				param->scan_rst.ble_adv,
+				ESP_BLE_AD_TYPE_NAME_CMPL,
+				&adv_name_len);
+
+			if (adv_name != NULL)
+			{
+				static const char *const DEVICE_NAME = "SERVER";
+				if (strncmp(adv_name, DEVICE_NAME, strlen(DEVICE_NAME)) == 0)
+				{
+					ESP_LOGI(GATTC_TAG, "Adding a server on idx %d", len_servers);
+					add_server(param->scan_rst.bda);
+					if (len_servers == MAX_NUM_SERVERS)
+						esp_ble_gap_stop_scanning();
+				}
+			}
+			break;
+		}
+
+    case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:
+        for (size_t i = 0; i < MAX_NUM_SERVERS; i++)
+        {
+        	esp_err_t ret = esp_ble_gattc_open(
+        		profile.gattc_if,
+        		bda[i],
+        		BLE_ADDR_TYPE_PUBLIC,
+        		true);
+
+        	if (ret != ESP_OK)
+        	{
+        		ESP_LOGI(GATTC_TAG, "Cannot connect to %x with: %x", bda[i][5], ret);
+        	    break;
+        	}
+
+        	vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+    	break;
+
     case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:
          ESP_LOGI(
         	GATTC_TAG,

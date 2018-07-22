@@ -11,7 +11,7 @@ void handle_rms_notification()
 	uint8_t max_rms = 0;
 	size_t max_idx = 0;
 
-	for (size_t i = 0; i < NUM_SERVERS; i++)
+	for (size_t i = 0; i < len_servers; i++)
 	{
 		if (rms[i] > max_rms)
 		{
