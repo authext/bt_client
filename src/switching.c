@@ -13,6 +13,10 @@ void handle_rms_notification()
 
 	for (size_t i = 0; i < len_servers; i++)
 	{
+		if(len_servers >= MAX_NUM_SERVERS)
+		{
+			ESP_LOGI(SWITCHING_TAG, "OMG! len_servers is %d.", len_servers);
+		}
 		if (rms[i] > max_rms)
 		{
 			max_rms = rms[i];

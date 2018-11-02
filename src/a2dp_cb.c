@@ -224,6 +224,7 @@ void a2dp_cb_state_machine(uint16_t event, void *param)
     switch (m_a2d_state)
     {
     case A2DP_CB_STATE_IDLE:
+        m_connecting_intv = 0;
         break;
 
     case A2DP_CB_STATE_CONNECTING:
