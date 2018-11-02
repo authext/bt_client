@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python\
-	../esp-idf/components/esptool_py/esptool/esptool.py\
+	$IDF_PATH/components/esptool_py/esptool/esptool.py\
 	--chip esp32\
 	--port $1\
 	--baud 115200\
@@ -17,7 +17,7 @@ python\
 
 winpty\
 	python\
-	../esp-idf/tools/idf_monitor.py\
+	$IDF_PATH/tools/idf_monitor.py\
 	--baud 115200\
 	--port $1\
 	--toolchain-prefix "xtensa-esp32-elf-"\
