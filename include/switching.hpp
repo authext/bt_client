@@ -1,5 +1,5 @@
-#ifndef SWITCHING_H
-#define SWITCHING_H
+#ifndef SWITCHING_HPP
+#define SWITCHING_HPP
 
 #include <stddef.h>
 #include <stdint.h>

@@ -1,7 +1,7 @@
-#include "switching.h"
-#include "gattc.h"
-#include "a2dp_cb.h"
-#include "glue.h"
+#include "switching.hpp"
+#include "gattc.hpp"
+#include "a2dp_cb.hpp"
+#include "glue.hpp"
 
 int current_a2dp_idx = -1;
 static const char *const SWITCHING_TAG = "SWITCHING";

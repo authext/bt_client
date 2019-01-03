@@ -20,11 +20,11 @@
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
 // My includes
-#include "a2dp_core.h"
-#include "a2dp_cb.h"
-#include "glue.h"
-#include "switching.h"
-#include "gattc.h"
+#include "a2dp_core.hpp"
+#include "a2dp_cb.hpp"
+#include "glue.hpp"
+#include "switching.hpp"
+#include "gattc.hpp"
 
 
 #define BT_APP_HEART_BEAT_EVT 0xff00

@@ -1,5 +1,5 @@
-#ifndef A2DP_CB_H
-#define A2DP_CB_H
+#ifndef A2DP_CB_HPP
+#define A2DP_CB_HPP
 
 // C includes
 #include <stdio.h>
@@ -23,7 +23,7 @@
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
 // My includes
-#include "a2dp_core.h"
+#include "a2dp_core.hpp"
 
 
 typedef enum

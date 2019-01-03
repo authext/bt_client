@@ -1,5 +1,5 @@
-#ifndef GLUE_H
-#define GLUE_H
+#ifndef GLUE_HPP
+#define GLUE_HPP
 
 #include "esp_gattc_api.h"
 

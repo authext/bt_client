@@ -17,9 +17,9 @@
 // Logging includes
 #include "esp_log.h"
 // My includes
-#include "a2dp_cb.h"
-#include "glue.h"
-#include "gattc.h"
+#include "a2dp_cb.hpp"
+#include "glue.hpp"
+#include "gattc.hpp"
 
 static const char *const GLUE_TAG = "GLUE";
 

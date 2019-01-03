@@ -1,6 +1,6 @@
-#include "gattc.h"
-#include "switching.h"
-#include "glue.h"
+#include "gattc.hpp"
+#include "switching.hpp"
+#include "glue.hpp"
 
 static const char *const GATTC_TAG = "GATT_CLIENT";
 int len_servers;

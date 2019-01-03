@@ -21,13 +21,13 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 // My includes
-#include "a2dp_cb.h"
-#include "gattc.h"
-#include "glue.h"
+#include "a2dp_cb.hpp"
+#include "gattc.hpp"
+#include "glue.hpp"
 
 static const char *const CLIENT_TAG = "CLIENT";
 
-void app_main()
+extern "C" void app_main()
 {
     esp_err_t ret;
 

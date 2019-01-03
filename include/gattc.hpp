@@ -1,5 +1,5 @@
-#ifndef GATT_H
-#define GATT_H
+#ifndef GATT_HPP
+#define GATT_HPP
 
 // C includes
 #include <stdio.h>
