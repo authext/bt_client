@@ -113,7 +113,7 @@ namespace
     			param->notify.conn_id,
     			param->notify.value[0]);
         	rms[param->notify.conn_id] = param->notify.value[0];
-        	handle_rms_notification();
+        	switching::handle_rms_notification();
         	break;
 
         case ESP_GATTC_DISCONNECT_EVT:

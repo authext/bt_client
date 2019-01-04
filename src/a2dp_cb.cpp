@@ -255,8 +255,8 @@ namespace
         {
             int a = rand() % 4 + 1;
             printf("(A2DP) I have a rms of %d\n", a);
-            rms[current_a2dp_idx] = a;
-            handle_rms_notification();
+            rms[switching::current_a2dp_idx] = a;
+            switching::handle_rms_notification();
         }
     }
 
