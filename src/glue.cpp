@@ -156,7 +156,7 @@ static void glue_handler(void *_)
 				ESP_LOGI(GLUE_TAG, "A2DP_TO_A2DP 3 -> 4");
 				glue_state = GLUE_STATE_A2DP_TO_A2DP_4;
 				esp_ble_gattc_open(
-					profile.gattc_if,
+					interface,
 					first_addr,
 					BLE_ADDR_TYPE_PUBLIC,
 					true);
@@ -201,7 +201,7 @@ static void glue_handler(void *_)
 				ESP_LOGI(GLUE_TAG, "A2DP_TO_BLE 2 -> 3");
 				glue_state = GLUE_STATE_A2DP_TO_BLE_3;
 				esp_ble_gattc_open(
-					profile.gattc_if,
+					interface,
 					first_addr,
 					BLE_ADDR_TYPE_PUBLIC,
 					true);
