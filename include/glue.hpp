@@ -6,7 +6,6 @@
 namespace glue
 {
 	void start_handler();
-	void stop_handler();
 
 	// Switches from (N BLE, 0 A2DP) to (N - 1 BLE, 1 A2DP)
 	void ble_to_a2dp(esp_bd_addr_t ble_addr);
