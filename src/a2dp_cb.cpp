@@ -1,9 +1,8 @@
 // C++ includes
 #include <thread>
 // C includes
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdint>
+#include <cstring>
 // Unix includes
 #include <unistd.h>
 // FreeRTOS includes
@@ -36,31 +35,31 @@ namespace
 
     constexpr auto BT_APP_HEART_BEAT_EVT = 0xff00;
 
-    enum state_t
+    enum class state_t
     {
-        STATE_IDLE,
-        STATE_CONNECTING,
-        STATE_CONNECTED,
-        STATE_DISCONNECTING,
+        IDLE,
+        CONNECTING,
+        CONNECTED,
+        DISCONNECTING,
     };
 
-    enum media_state_t
+    enum class media_state_t
     {
-        MEDIA_STATE_IDLE,
-        MEDIA_STATE_STARTING,
-        MEDIA_STATE_STARTED,
-        MEDIA_STATE_STOPPING,
+        IDLE,
+        STARTING,
+        STARTED,
+        STOPPING,
     };
 
-    static esp_bd_addr_t peer_bda;
-    static int m_a2d_state = STATE_IDLE;
-    static int m_media_state = MEDIA_STATE_IDLE;
-    static int m_connecting_intv = 0;
-    static uint32_t m_pkt_cnt = 0;
+    esp_bd_addr_t peer_bda;
+    state_t m_a2d_state = state_t::IDLE;
+    media_state_t m_media_state = media_state_t::IDLE;
+    int m_connecting_intv = 0;
+    std::uint32_t m_pkt_cnt = 0;
 
-    static void state_connecting(uint16_t event, void *param)
+    void state_connecting(std::uint16_t event, void *param)
     {
-        esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
+        const auto *a2d = (esp_a2d_cb_param_t *)param;
 
         switch (event)
         {
@@ -68,14 +67,14 @@ namespace
             if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED)
             {
                 ESP_LOGI(TAG, "A2DP connected");
-                m_a2d_state =  STATE_CONNECTED;
-                m_media_state = MEDIA_STATE_STARTING;
+                m_a2d_state =  state_t::CONNECTED;
+                m_media_state = media_state_t::STARTING;
                 glue_notify_a2dp_connected();
             }
             else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
             {
-                memset(peer_bda, 0, sizeof(esp_bd_addr_t));
-                m_a2d_state = STATE_IDLE;
+                std::memset(peer_bda, 0, sizeof(esp_bd_addr_t));
+                m_a2d_state = state_t::IDLE;
             }
             break;
 
@@ -117,7 +116,7 @@ namespace
         case BT_APP_HEART_BEAT_EVT:
             if (++m_connecting_intv >= 2)
             {
-                m_a2d_state = STATE_IDLE;
+                m_a2d_state = state_t::IDLE;
                 m_connecting_intv = 0;
                 ESP_LOGW(TAG, "Failed to connect");
                 esp_a2d_sink_disconnect(peer_bda);
@@ -130,9 +129,9 @@ namespace
         }
     }
 
-    static void state_connected(uint16_t event, void *param)
+    void state_connected(std::uint16_t event, void *param)
     {
-        esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
+        const auto *a2d = (esp_a2d_cb_param_t *)param;
 
         switch (event)
         {
@@ -140,7 +139,7 @@ namespace
             if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTING)
             {
                 ESP_LOGI(TAG, "A2DP disconnecting");
-                m_a2d_state = STATE_DISCONNECTING;
+                m_a2d_state = state_t::DISCONNECTING;
                 glue_notify_a2dp_disconnecting();
             }
             break;
@@ -167,9 +166,9 @@ namespace
         }
     }
 
-    static void state_disconnecting(uint16_t event, void *param)
+    void state_disconnecting(std::uint16_t event, void *param)
     {
-        esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)param;
+        const auto *a2d = (esp_a2d_cb_param_t *)param;
 
         switch (event)
         {
@@ -177,7 +176,7 @@ namespace
             if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
             {
                 ESP_LOGI(TAG, "A2DP disconnected");
-                m_a2d_state =  STATE_IDLE;
+                m_a2d_state =  state_t::IDLE;
                 glue_notify_a2dp_disconnected();
             }
             break;
@@ -194,30 +193,30 @@ namespace
         }
     }
 
-    void state_machine(uint16_t event, void *param)
+    void state_machine(std::uint16_t event, void *param)
     {
         ESP_LOGI(
             TAG,
             "%s state %d, evt 0x%x",
             __func__,
-            m_a2d_state,
+            static_cast<int>(m_a2d_state),
             event);
 
         switch (m_a2d_state)
         {
-        case STATE_IDLE:
+        case state_t::IDLE:
             m_connecting_intv = 0;
             break;
 
-        case STATE_CONNECTING:
+        case state_t::CONNECTING:
             state_connecting(event, param);
             break;
 
-        case STATE_CONNECTED:
+        case state_t::CONNECTED:
             state_connected(event, param);
             break;
 
-        case STATE_DISCONNECTING:
+        case state_t::DISCONNECTING:
             state_disconnecting(event, param);
             break;
 
@@ -226,12 +225,12 @@ namespace
                 TAG,
                 "%s invalid state %d",
                 __func__,
-                m_a2d_state);
+                static_cast<int>(m_a2d_state));
             break;
         }
     }
 
-    static void cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
+    void callback(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
     {
         a2dp_core::dispatch(
             state_machine,
@@ -240,11 +239,11 @@ namespace
             sizeof(esp_a2d_cb_param_t));
     }
 
-    static void data_cb(const uint8_t *data, uint32_t len)
+    void data_callback(const std::uint8_t *data, std::uint32_t len)
     {
-        static uint32_t sum_len = 0;
+        static std::uint32_t sum_len = 0;
 
-        if (len == 0 || data == NULL)
+        if (len == 0 || data == nullptr)
             return;
 
         sum_len += len;
@@ -261,7 +260,7 @@ namespace
         }
     }
 
-    static void gap_cb(
+    void gap_callback(
         esp_bt_gap_cb_event_t event,
         esp_bt_gap_cb_param_t *param)
     {
@@ -290,7 +289,7 @@ namespace
         a2dp_core::dispatch(
             state_machine,
             BT_APP_HEART_BEAT_EVT,
-            NULL,
+            nullptr,
             0);
     }
 
@@ -311,9 +310,9 @@ namespace a2dp_cb
     	ESP_LOGI(TAG, "Setting up A2DP");
     	esp_bt_dev_set_device_name("CLIENT");
 
-        ESP_ERROR_CHECK(esp_bt_gap_register_callback(gap_cb));
-        ESP_ERROR_CHECK(esp_a2d_register_callback(cb));
-        ESP_ERROR_CHECK(esp_a2d_sink_register_data_callback(data_cb));
+        ESP_ERROR_CHECK(esp_bt_gap_register_callback(gap_callback));
+        ESP_ERROR_CHECK(esp_a2d_register_callback(callback));
+        ESP_ERROR_CHECK(esp_a2d_sink_register_data_callback(data_callback));
         ESP_ERROR_CHECK(esp_a2d_sink_init());
         ESP_ERROR_CHECK(esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE));
 
@@ -322,12 +321,12 @@ namespace a2dp_cb
 
     esp_err_t connect(const esp_bd_addr_t addr)
     {
-        memcpy(peer_bda, addr, sizeof(esp_bd_addr_t));
+        std::memcpy(peer_bda, addr, sizeof(esp_bd_addr_t));
 
-        m_a2d_state = STATE_CONNECTING;
+        m_a2d_state = state_t::CONNECTING;
         esp_err_t ret = esp_a2d_sink_connect(peer_bda);
         if (ret != ESP_OK)
-            m_a2d_state = STATE_IDLE;
+            m_a2d_state = state_t::IDLE;
         return ret;
     }
 }
