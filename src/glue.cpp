@@ -104,7 +104,7 @@ static void glue_handler(void *_)
 				// Disconnected BLE, connecting A2DP
 				ESP_LOGI(GLUE_TAG, "BLE_TO_A2DP 1 -> 2");
 				glue_state = GLUE_STATE_BLE_TO_A2DP_2;
-				a2dp_cb_connect(first_addr);
+				a2dp_cb::connect(first_addr);
 			}
 			break;
 
@@ -145,7 +145,7 @@ static void glue_handler(void *_)
 				// Disconnected A2DP, connecting other A2DP
 				ESP_LOGI(GLUE_TAG, "A2DP_TO_A2DP 2 -> 3");
 				glue_state = GLUE_STATE_A2DP_TO_A2DP_3;
-				a2dp_cb_connect(second_addr);
+				a2dp_cb::connect(second_addr);
 			}
 			break;
 

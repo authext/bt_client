@@ -74,18 +74,6 @@ static uint32_t m_pkt_cnt = 0;
 
 static TimerHandle_t tmr;
 
-
-esp_err_t a2dp_cb_connect(const esp_bd_addr_t addr)
-{
-	memcpy(peer_bda, addr, sizeof(esp_bd_addr_t));
-
-	m_a2d_state = A2DP_CB_STATE_CONNECTING;
-	esp_err_t ret = esp_a2d_sink_connect(peer_bda);
-	if (ret != ESP_OK)
-		m_a2d_state = A2DP_CB_STATE_IDLE;
-	return ret;
-}
-
 static void a2dp_cb_gap_cb(
 	esp_bt_gap_cb_event_t event,
 	esp_bt_gap_cb_param_t *param)
@@ -110,16 +98,14 @@ static void a2dp_cb_gap_cb(
     }
 }
 
-void a2dp_cb_handle_stack_event(uint16_t event, void *p_param)
+namespace a2dp_cb
 {
-    ESP_LOGD(A2DP_CB_TAG, "%s evt %d", __func__, event);
-
-    esp_err_t ret;
-
-    switch (event)
+    void init_stack(uint16_t event, void *p_param)
     {
-    case A2D_CB_EVENT_STACK_UP:
-    {
+        ESP_LOGD(A2DP_CB_TAG, "%s evt %d", __func__, event);
+
+        esp_err_t ret;
+
     	ESP_LOGI(A2DP_CB_TAG, "Setting up A2DP");
     	esp_bt_dev_set_device_name("CLIENT");
         if ((ret = esp_bt_gap_register_callback(a2dp_cb_gap_cb)) != ESP_OK)
@@ -160,16 +146,17 @@ void a2dp_cb_handle_stack_event(uint16_t event, void *p_param)
 			NULL,
 			a2dp_cb_heart_beat);
         xTimerStart(tmr, portMAX_DELAY);
-        break;
     }
 
-    default:
-        ESP_LOGE(
-        	A2DP_CB_TAG,
-			"%s unhandled evt %d",
-			__func__,
-			event);
-        break;
+    esp_err_t connect(const esp_bd_addr_t addr)
+    {
+        memcpy(peer_bda, addr, sizeof(esp_bd_addr_t));
+
+        m_a2d_state = A2DP_CB_STATE_CONNECTING;
+        esp_err_t ret = esp_a2d_sink_connect(peer_bda);
+        if (ret != ESP_OK)
+            m_a2d_state = A2DP_CB_STATE_IDLE;
+        return ret;
     }
 }
 
