@@ -36,9 +36,9 @@ extern "C" void app_main()
 
     a2dp_core::start();
     a2dp_core::dispatch(
-        a2dp_cb_handle_stack_event,
-    	A2D_CB_EVENT_STACK_UP,
-    	NULL,
+        a2dp_cb::init_stack,
+    	0,
+    	nullptr,
     	0);
 
     glue_start_handler();
