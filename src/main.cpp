@@ -41,7 +41,7 @@ extern "C" void app_main()
     	nullptr,
     	0);
 
-    glue_start_handler();
+    glue::start_handler();
 
     ESP_ERROR_CHECK(esp_ble_gap_register_callback(gattc::esp_gap_cb));
     ESP_ERROR_CHECK(esp_ble_gattc_register_callback(gattc::esp_gattc_cb));

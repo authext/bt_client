@@ -70,7 +70,7 @@ namespace
             	gattc_if,
     			param->connect.remote_bda,
     			0x2a);
-            glue_notify_ble_connected();
+            glue::notify_ble_connected();
             break;
         }
 
@@ -121,7 +121,7 @@ namespace
             	TAG,
     			"ESP_GATTC_DISCONNECT_EVT, reason = %d",
     			param->disconnect.reason);
-            glue_notify_ble_disconnected();
+            glue::notify_ble_disconnected();
             break;
 
         default:

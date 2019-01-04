@@ -69,7 +69,7 @@ namespace
                 ESP_LOGI(TAG, "A2DP connected");
                 m_a2d_state =  state_t::CONNECTED;
                 m_media_state = media_state_t::STARTING;
-                glue_notify_a2dp_connected();
+                glue::notify_a2dp_connected();
             }
             else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
             {
@@ -140,7 +140,7 @@ namespace
             {
                 ESP_LOGI(TAG, "A2DP disconnecting");
                 m_a2d_state = state_t::DISCONNECTING;
-                glue_notify_a2dp_disconnecting();
+                glue::notify_a2dp_disconnecting();
             }
             break;
 
@@ -151,7 +151,7 @@ namespace
             }
             else if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STOPPED)
             {
-                glue_notify_a2dp_media_stopped();
+                glue::notify_a2dp_media_stopped();
             }
 
             break;
@@ -177,7 +177,7 @@ namespace
             {
                 ESP_LOGI(TAG, "A2DP disconnected");
                 m_a2d_state =  state_t::IDLE;
-                glue_notify_a2dp_disconnected();
+                glue::notify_a2dp_disconnected();
             }
             break;
 
