@@ -175,7 +175,7 @@ void a2dp_cb_handle_stack_event(uint16_t event, void *p_param)
 
 static void a2dp_cb_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 {
-    a2dp_core_dispatch(
+    a2dp_core::dispatch(
     	a2dp_cb_state_machine,
 		event,
 		param,
@@ -205,7 +205,7 @@ static void a2dp_cb_data_cb(const uint8_t *data, uint32_t len)
 
 static void a2dp_cb_heart_beat(void *arg)
 {
-    a2dp_core_dispatch(
+    a2dp_core::dispatch(
     	a2dp_cb_state_machine,
 		BT_APP_HEART_BEAT_EVT,
 		NULL,

@@ -79,8 +79,8 @@ extern "C" void app_main()
         return;
     }
 
-    a2dp_core_start();
-    a2dp_core_dispatch(
+    a2dp_core::start();
+    a2dp_core::dispatch(
         a2dp_cb_handle_stack_event,
     	A2D_CB_EVENT_STACK_UP,
     	NULL,
