@@ -1,3 +1,6 @@
+// C++ includes
+#include <algorithm>
+#include <vector>
 // C includes
 #include <cstring>
 // My includes
@@ -7,33 +10,21 @@
 
 std::uint16_t interface = ESP_GATT_IF_NONE;
 std::uint16_t conn_id;
-esp_bd_addr_t bda[MAX_NUM_SERVERS] =
-{
-    { 0x30, 0xae, 0xa4, 0x3c, 0x3d, 0xf2 },
-    { 0x30, 0xae, 0xa4, 0x3c, 0x89, 0xf6 },
-};
-int len_servers;
-std::uint8_t rms[MAX_NUM_SERVERS];
+std::vector<bd_address> bda;
+std::vector<std::uint8_t> rms;
 
 namespace
 {
     constexpr auto TAG = "GATT_CLIENT";
 
-    bool is_server_equal(const esp_bd_addr_t l, const esp_bd_addr_t r)
+    void add_server(const bd_address addr)
     {
-    	return memcmp(l, r, sizeof(esp_bd_addr_t)) == 0;
-    }
-
-    void add_server(const esp_bd_addr_t addr)
-    {
-    	for (int i = 0; i < len_servers; i++)
-    	{
-    		if (is_server_equal(bda[i], addr))
-    			return;
-    	}
-
-    	memcpy(bda[len_servers], addr, sizeof(esp_bd_addr_t));
-    	++len_servers;
+        const auto it = std::find(cbegin(bda), cend(bda), addr);
+        if (it == cend(bda))
+        {
+            bda.emplace_back(addr);
+            rms.emplace_back(0);
+        }
     }
 
     void gattc_profile_event_handler(
@@ -46,7 +37,7 @@ namespace
         case ESP_GATTC_REG_EVT:
         {
             ESP_LOGI(TAG, "REG_EVT");
-            esp_ble_gap_start_scanning(5);
+            glue::idle_to_ble();
             break;
         }
 
@@ -65,12 +56,7 @@ namespace
             	TAG,
     			param->connect.remote_bda,
     			sizeof(esp_bd_addr_t));
-            ESP_ERROR_CHECK(esp_ble_gattc_send_mtu_req(gattc_if, conn_id));
-            esp_ble_gattc_register_for_notify(
-            	gattc_if,
-    			param->connect.remote_bda,
-    			0x2a);
-            glue::notify_ble_connected();
+            glue::notify_ble_opened(conn_id);
             break;
         }
 
@@ -100,10 +86,12 @@ namespace
     			param->cfg_mtu.status,
     			param->cfg_mtu.mtu,
     			param->cfg_mtu.conn_id);
+            glue::notify_mtu_configured();
             break;
 
         case ESP_GATTC_REG_FOR_NOTIFY_EVT:
         	ESP_LOGI(TAG, "register for notify");
+            glue::notify_ble_connected();
         	break;
 
         case ESP_GATTC_NOTIFY_EVT:
@@ -161,33 +149,19 @@ namespace gattc
     				constexpr auto DEVICE_NAME = "SERVER";
     				if (strncmp(adv_name, DEVICE_NAME, strlen(DEVICE_NAME)) == 0)
     				{
-    					ESP_LOGI(TAG, "Adding a server on idx %d", len_servers);
+    					ESP_LOGI(TAG, "Maybe adding a server");
+                        esp_log_buffer_hex(
+                            TAG,
+                            param->scan_rst.bda,
+                            sizeof(esp_bd_addr_t));
     					add_server(param->scan_rst.bda);
-    					if (len_servers == MAX_NUM_SERVERS)
-    						esp_ble_gap_stop_scanning();
     				}
     			}
     			break;
     		}
 
         case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:
-            for (size_t i = 0; i < MAX_NUM_SERVERS; i++)
-            {
-            	esp_err_t ret = esp_ble_gattc_open(
-            		interface,
-            		bda[i],
-            		BLE_ADDR_TYPE_PUBLIC,
-            		true);
-
-            	if (ret != ESP_OK)
-            	{
-            		ESP_LOGI(TAG, "Cannot connect to %x with: %x", bda[i][5], ret);
-            	    break;
-            	}
-
-                // TODO: CHANGE THIS SHIT
-            	//vTaskDelay(10 / portTICK_PERIOD_MS);
-            }
+            glue::notify_scan_finished();
         	break;
 
         case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:

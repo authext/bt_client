@@ -33,9 +33,15 @@ namespace
 {
 	constexpr auto TAG = "GLUE";
 
-	enum state_t
+	enum class state_t
 	{
 		IDLE,
+
+		IDLE_TO_BLE_0,
+		IDLE_TO_BLE_1,
+		IDLE_TO_BLE_2,
+		IDLE_TO_BLE_3,
+		IDLE_TO_BLE_4,
 
 		BLE_TO_A2DP_0,
 		BLE_TO_A2DP_1,
@@ -55,11 +61,16 @@ namespace
 	auto state = state_t::IDLE;
 
 
-	enum msg_t
+	enum class msg_t
 	{
+		IDLE_TO_BLE_START,
 		BLE_TO_A2DP_START,
 		A2DP_TO_A2DP_START,
 		A2DP_TO_BLE_START,
+
+		SCAN_FINISHED,
+		BLE_OPENED,
+		MTU_CONFIGURED,
 
 		BLE_CONNECTED,
 		BLE_DISCONNECTED,
@@ -73,6 +84,9 @@ namespace
 
 	std::queue<msg_t> messages;
 	std::mutex message_mutex;
+
+	std::size_t to_connect;
+	int saved_conn_id;
 
 	esp_bd_addr_t first_addr;
 	esp_bd_addr_t second_addr;
@@ -108,6 +122,70 @@ namespace
 			switch (state)
 			{
 			case state_t::IDLE:
+				break;
+
+			/* IDLE TO BLE ALGORITHM */
+			case state_t::IDLE_TO_BLE_0:
+				if (msg == msg_t::IDLE_TO_BLE_START)
+				{
+					ESP_LOGI(TAG, "IDLE_TO_BLE 0 -> 1");
+					state = state_t::IDLE_TO_BLE_1;
+					ESP_ERROR_CHECK(esp_ble_gap_start_scanning(5));
+				}
+				break;
+
+			case state_t::IDLE_TO_BLE_1:
+				if (msg == msg_t::SCAN_FINISHED)
+				{
+					ESP_LOGI(TAG, "IDLE_TO_BLE 1 -> 2");
+					state = state_t::IDLE_TO_BLE_2;
+					to_connect = 0;
+					// Send an "empty" connected message to kickstart connecting process
+					glue::notify_ble_connected();
+				}
+				break;
+
+			case state_t::IDLE_TO_BLE_2:
+				if (msg == msg_t::BLE_CONNECTED)
+				{
+					if (to_connect < bda.size())
+					{
+						ESP_LOGI(TAG, "IDLE_TO_BLE 2 -> 3");
+						state = state_t::IDLE_TO_BLE_3;
+						ESP_ERROR_CHECK(esp_ble_gattc_open(
+		            		interface,
+		            		bda[to_connect],
+		            		BLE_ADDR_TYPE_PUBLIC,
+		            		true));
+					}
+					else
+					{
+						ESP_LOGI(TAG, "IDLE_TO_BLE 2 -> END");
+						state = state_t::IDLE;
+					}
+				}
+				break;
+
+			case state_t::IDLE_TO_BLE_3:
+				if (msg == msg_t::BLE_OPENED)
+				{
+					ESP_LOGI(TAG, "IDLE_TO_BLE 3 -> 4");
+					state = state_t::IDLE_TO_BLE_4;
+					ESP_ERROR_CHECK(esp_ble_gattc_send_mtu_req(interface, conn_id));
+				}
+				break;
+
+			case state_t::IDLE_TO_BLE_4:
+				if (msg == msg_t::MTU_CONFIGURED)
+				{
+					ESP_LOGI(TAG, "IDLE_TO_BLE 4 -> 2");
+					state = state_t::IDLE_TO_BLE_2;
+					ESP_ERROR_CHECK(esp_ble_gattc_register_for_notify(
+            			interface,
+    					bda[to_connect],
+    					0x2a));
+					++to_connect;
+				}
 				break;
 
 
@@ -243,7 +321,7 @@ namespace
 
 
 			default:
-				ESP_LOGE(TAG, "Unknown state %d", state);
+				ESP_LOGE(TAG, "Unknown state %d", static_cast<int>(state));
 			}
 		}
 	}
@@ -252,6 +330,11 @@ namespace
 	{
 		std::lock_guard<std::mutex> l(message_mutex);
 		q.emplace(msg);
+	}
+
+	void notify_idle_to_ble_start()
+	{
+		send_msg(messages, msg_t::IDLE_TO_BLE_START);
 	}
 
 	void notify_ble_to_a2dp_start()
@@ -275,6 +358,20 @@ namespace glue
 	void start_handler()
 	{
 		std::thread(handler).detach();
+	}
+
+	void idle_to_ble()
+	{
+		ESP_LOGI(TAG, "idle->ble");
+
+		if (state != state_t::IDLE)
+		{
+			ESP_LOGW(TAG, "Cannot start idle->ble switch when already switching modes");
+			return;
+		}
+
+		state = state_t::IDLE_TO_BLE_0;
+		notify_idle_to_ble_start();
 	}
 
 	void ble_to_a2dp(esp_bd_addr_t ble_addr)
@@ -326,6 +423,22 @@ namespace glue
 
 		state = state_t::A2DP_TO_BLE_0;
 		notify_a2dp_to_ble_start();
+	}
+
+	void notify_scan_finished()
+	{
+		send_msg(messages, msg_t::SCAN_FINISHED);
+	}
+
+	void notify_ble_opened(int conn_id)
+	{
+		saved_conn_id = conn_id;
+		send_msg(messages, msg_t::BLE_OPENED);
+	}
+
+	void notify_mtu_configured()
+	{
+		send_msg(messages, msg_t::MTU_CONFIGURED);
 	}
 
 	void notify_ble_connected()
