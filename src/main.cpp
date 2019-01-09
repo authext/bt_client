@@ -13,7 +13,6 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 // My includes
-#include "a2dp_core.hpp"
 #include "a2dp_cb.hpp"
 #include "gattc.hpp"
 #include "glue.hpp"
@@ -34,12 +33,7 @@ extern "C" void app_main()
     ESP_ERROR_CHECK(esp_bluedroid_init());
     ESP_ERROR_CHECK(esp_bluedroid_enable());
 
-    a2dp_core::start();
-    a2dp_core::dispatch(
-        a2dp_cb::init_stack,
-    	0,
-    	nullptr,
-    	0);
+    a2dp_cb::init_stack(0, nullptr);
 
     glue::start_handler();
 

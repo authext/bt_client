@@ -13,7 +13,6 @@
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
 // My includes
-#include "a2dp_core.hpp"
 #include "a2dp_cb.hpp"
 #include "glue.hpp"
 #include "switching.hpp"
