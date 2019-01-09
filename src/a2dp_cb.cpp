@@ -1,14 +1,6 @@
-// C++ includes
-#include <thread>
 // C includes
 #include <cstdint>
 #include <cstring>
-// Unix includes
-#include <unistd.h>
-// FreeRTOS includes
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/timers.h"
 // ESP System includes
 #include "esp_system.h"
 // Logging includes
@@ -27,13 +19,9 @@
 #include "switching.hpp"
 #include "gattc.hpp"
 
-using namespace std::literals;
-
 namespace
 {
     constexpr auto TAG = "A2DP_CB";
-
-    constexpr auto BT_APP_HEART_BEAT_EVT = 0xff00;
 
     enum class state_t
     {
@@ -113,16 +101,6 @@ namespace
             }
             break;
 
-        case BT_APP_HEART_BEAT_EVT:
-            if (++m_connecting_intv >= 2)
-            {
-                m_a2d_state = state_t::IDLE;
-                m_connecting_intv = 0;
-                ESP_LOGW(TAG, "Failed to connect");
-                esp_a2d_sink_disconnect(peer_bda);
-            }
-            break;
-
         default:
             ESP_LOGE(TAG, "%s unhandled evt %d", __func__, event);
             break;
@@ -157,7 +135,6 @@ namespace
             break;
 
         case ESP_A2D_MEDIA_CTRL_ACK_EVT:
-        case BT_APP_HEART_BEAT_EVT:
             break;
 
         default:
@@ -184,7 +161,6 @@ namespace
         case ESP_A2D_AUDIO_STATE_EVT:
         case ESP_A2D_AUDIO_CFG_EVT:
         case ESP_A2D_MEDIA_CTRL_ACK_EVT:
-        case BT_APP_HEART_BEAT_EVT:
             break;
 
         default:
@@ -283,24 +259,6 @@ namespace
             break;
         }
     }
-
-    void heart_beat()
-    {
-        a2dp_core::dispatch(
-            state_machine,
-            BT_APP_HEART_BEAT_EVT,
-            nullptr,
-            0);
-    }
-
-    void on_timer(void (*action)())
-    {
-        for (;;)
-        {
-            std::this_thread::sleep_for(10s);
-            action();
-        }
-    }
 }
 
 namespace a2dp_cb
@@ -315,8 +273,6 @@ namespace a2dp_cb
         ESP_ERROR_CHECK(esp_a2d_sink_register_data_callback(data_callback));
         ESP_ERROR_CHECK(esp_a2d_sink_init());
         ESP_ERROR_CHECK(esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE));
-
-        std::thread(on_timer, heart_beat).detach();
     }
 
     esp_err_t connect(const esp_bd_addr_t addr)
