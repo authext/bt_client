@@ -45,19 +45,15 @@ namespace
 
 		BLE_TO_A2DP_0,
 		BLE_TO_A2DP_1,
-		BLE_TO_A2DP_2,
-		BLE_TO_A2DP_3,
 
 		A2DP_TO_A2DP_0,
 		A2DP_TO_A2DP_1,
 		A2DP_TO_A2DP_2,
 		A2DP_TO_A2DP_3,
-		A2DP_TO_A2DP_4,
 
 		A2DP_TO_BLE_0,
 		A2DP_TO_BLE_1,
 		A2DP_TO_BLE_2,
-		A2DP_TO_BLE_3,
 	};
 	auto state = state_t::IDLE;
 
@@ -195,24 +191,14 @@ namespace
 			case state_t::BLE_TO_A2DP_0:
 				if (msg == msg_t::BLE_TO_A2DP_START)
 				{
-					// Disconnecting BLE
+					// Connect A2DP
 					ESP_LOGI(TAG, "BLE_TO_A2DP 0 -> 1");
 					state = state_t::BLE_TO_A2DP_1;
-					esp_ble_gap_disconnect(first_addr);
-				}
-				break;
-
-			case state_t::BLE_TO_A2DP_1:
-				if (msg == msg_t::BLE_DISCONNECTED)
-				{
-					// Disconnected BLE, connecting A2DP
-					ESP_LOGI(TAG, "BLE_TO_A2DP 1 -> 2");
-					state = state_t::BLE_TO_A2DP_2;
 					esp_a2d_sink_connect(first_addr);
 				}
 				break;
 
-			case state_t::BLE_TO_A2DP_2:
+			case state_t::BLE_TO_A2DP_1:
 				if (msg == msg_t::A2DP_CONNECTED)
 				{
 					// Connected A2DP
@@ -256,22 +242,8 @@ namespace
 			case state_t::A2DP_TO_A2DP_3:
 				if (msg == msg_t::A2DP_CONNECTED)
 				{
-					// Connected A2DP, connecting other BLE
-					ESP_LOGI(TAG, "A2DP_TO_A2DP 3 -> 4");
-					state = state_t::A2DP_TO_A2DP_4;
-					esp_ble_gattc_open(
-						interface,
-						first_addr,
-						BLE_ADDR_TYPE_PUBLIC,
-						true);
-				}
-				break;
-
-			case state_t::A2DP_TO_A2DP_4:
-				if (msg == msg_t::BLE_CONNECTED)
-				{
-					// Connected BLE
-					ESP_LOGI(TAG, "A2DP_TO_A2DP 4 -> IDLE");
+					// Connected other A2DP
+					ESP_LOGI(TAG, "A2DP_TO_A2DP 3 -> END");
 					state = state_t::IDLE;
 				}
 				break;
@@ -284,7 +256,7 @@ namespace
 					// Stopping media
 					ESP_LOGI(TAG, "A2DP_TO_BLE 0 -> 1");
 					state = state_t::A2DP_TO_BLE_1;
-					esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
+					ESP_ERROR_CHECK(esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP));
 				}
 				break;
 
@@ -294,29 +266,15 @@ namespace
 					// Stopped media, disconnecting A2DP
 					ESP_LOGI(TAG, "A2DP_TO_BLE 1 -> 2");
 					state = state_t::A2DP_TO_BLE_2;
-					esp_a2d_sink_disconnect(first_addr);
+					ESP_ERROR_CHECK(esp_a2d_sink_disconnect(first_addr));
 				}
 				break;
 
 			case state_t::A2DP_TO_BLE_2:
 				if (msg == msg_t::A2DP_DISCONNECTED)
 				{
-					// Disconnected A2DP, connecting back BLE
-					ESP_LOGI(TAG, "A2DP_TO_BLE 2 -> 3");
-					state = state_t::A2DP_TO_BLE_3;
-					esp_ble_gattc_open(
-						interface,
-						first_addr,
-						BLE_ADDR_TYPE_PUBLIC,
-						true);
-				}
-				break;
-
-			case state_t::A2DP_TO_BLE_3:
-				if (msg == msg_t::BLE_CONNECTED)
-				{
-					// Connected BLE
-					ESP_LOGI(TAG, "A2DP_TO_BLE 3 -> IDLE");
+					// Disconnected A2DP
+					ESP_LOGI(TAG, "A2DP_TO_BLE 2 -> END");
 					state = state_t::IDLE;
 				}
 				break;

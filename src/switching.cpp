@@ -48,7 +48,7 @@ namespace switching
 		else if (rms[current_a2dp_idx] <= 2)
 		{
 			ESP_LOGI(TAG, "Would call A2DP to BLE for %d", current_a2dp_idx);
-			//glue::a2dp_to_ble(bda[current_a2dp_idx]);
+			glue::a2dp_to_ble(bda[current_a2dp_idx]);
 			current_a2dp_idx = -1;
 		}
 	}
