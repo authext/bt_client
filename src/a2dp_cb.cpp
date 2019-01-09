@@ -52,7 +52,6 @@ namespace
             if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STARTED)
             {
                 m_pkt_cnt = 0;
-                glue::notify_a2dp_media_started();
             }
             else if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STOPPED)
             {

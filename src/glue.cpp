@@ -126,7 +126,7 @@ namespace
 			case state_t::IDLE_TO_BLE_0:
 				if (msg == msg_t::IDLE_TO_BLE_START)
 				{
-					ESP_LOGI(TAG, "IDLE_TO_BLE 0 -> 1");
+					ESP_LOGI(TAG, "IDLE_TO_BLE Start Scanning");
 					state = state_t::IDLE_TO_BLE_1;
 					ESP_ERROR_CHECK(esp_ble_gap_start_scanning(5));
 				}
@@ -135,7 +135,7 @@ namespace
 			case state_t::IDLE_TO_BLE_1:
 				if (msg == msg_t::SCAN_FINISHED)
 				{
-					ESP_LOGI(TAG, "IDLE_TO_BLE 1 -> 2");
+					ESP_LOGI(TAG, "IDLE_TO_BLE Kickstart connections");
 					state = state_t::IDLE_TO_BLE_2;
 					to_connect = 0;
 					// Send an "empty" connected message to kickstart connecting process
@@ -148,7 +148,7 @@ namespace
 				{
 					if (to_connect < bda.size())
 					{
-						ESP_LOGI(TAG, "IDLE_TO_BLE 2 -> 3");
+						ESP_LOGI(TAG, "IDLE_TO_BLE Open connection with %d", to_connect);
 						state = state_t::IDLE_TO_BLE_3;
 						ESP_ERROR_CHECK(esp_ble_gattc_open(
 		            		interface,
@@ -158,7 +158,7 @@ namespace
 					}
 					else
 					{
-						ESP_LOGI(TAG, "IDLE_TO_BLE 2 -> END");
+						ESP_LOGI(TAG, "IDLE_TO_BLE Finished");
 						state = state_t::IDLE;
 					}
 				}
@@ -167,7 +167,7 @@ namespace
 			case state_t::IDLE_TO_BLE_3:
 				if (msg == msg_t::BLE_OPENED)
 				{
-					ESP_LOGI(TAG, "IDLE_TO_BLE 3 -> 4");
+					ESP_LOGI(TAG, "IDLE_TO_BLE Send MTU negotation to %d", to_connect);
 					state = state_t::IDLE_TO_BLE_4;
 					ESP_ERROR_CHECK(esp_ble_gattc_send_mtu_req(interface, conn_id));
 				}
@@ -176,7 +176,7 @@ namespace
 			case state_t::IDLE_TO_BLE_4:
 				if (msg == msg_t::MTU_CONFIGURED)
 				{
-					ESP_LOGI(TAG, "IDLE_TO_BLE 4 -> 2");
+					ESP_LOGI(TAG, "IDLE_TO_BLE Register for notifications with %d", to_connect);
 					state = state_t::IDLE_TO_BLE_2;
 					ESP_ERROR_CHECK(esp_ble_gattc_register_for_notify(
             			interface,
@@ -191,18 +191,16 @@ namespace
 			case state_t::BLE_TO_A2DP_0:
 				if (msg == msg_t::BLE_TO_A2DP_START)
 				{
-					// Connect A2DP
-					ESP_LOGI(TAG, "BLE_TO_A2DP 0 -> 1");
+					ESP_LOGI(TAG, "BLE_TO_A2DP Connect A2DP");
 					state = state_t::BLE_TO_A2DP_1;
-					esp_a2d_sink_connect(first_addr);
+					ESP_ERROR_CHECK(esp_a2d_sink_connect(first_addr));
 				}
 				break;
 
 			case state_t::BLE_TO_A2DP_1:
 				if (msg == msg_t::A2DP_CONNECTED)
 				{
-					// Connected A2DP
-					ESP_LOGI(TAG, "BLE_TO_A2DP 2 -> 3");
+					ESP_LOGI(TAG, "BLE_TO_A2DP Finished");
 					state = state_t::IDLE;
 				}
 				break;
@@ -212,38 +210,34 @@ namespace
 			case state_t::A2DP_TO_A2DP_0:
 				if (msg == msg_t::A2DP_TO_A2DP_START)
 				{
-					// Stopping media
-					ESP_LOGI(TAG, "A2DP_TO_A2DP 0 -> 1");
+					ESP_LOGI(TAG, "A2DP_TO_A2DP Stop media stream");
 					state = state_t::A2DP_TO_A2DP_1;
-					esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
+					ESP_ERROR_CHECK(esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP));
 				}
 				break;
 
 			case state_t::A2DP_TO_A2DP_1:
 				if (msg == msg_t::A2DP_MEDIA_STOPPED)
 				{
-					// Stopped media, disconnecting A2DP
-					ESP_LOGI(TAG, "A2DP_TO_A2DP 1 -> 2");
+					ESP_LOGI(TAG, "A2DP_TO_A2DP Disconnect A2DP");
 					state = state_t::A2DP_TO_A2DP_2;
-					esp_a2d_sink_disconnect(first_addr);
+					ESP_ERROR_CHECK(esp_a2d_sink_disconnect(first_addr));
 				}
 				break;
 
 			case state_t::A2DP_TO_A2DP_2:
 				if (msg == msg_t::A2DP_DISCONNECTED)
 				{
-					// Disconnected A2DP, connecting other A2DP
-					ESP_LOGI(TAG, "A2DP_TO_A2DP 2 -> 3");
+					ESP_LOGI(TAG, "A2DP_TO_A2DP Connect other A2DP");
 					state = state_t::A2DP_TO_A2DP_3;
-					esp_a2d_sink_connect(second_addr);
+					ESP_ERROR_CHECK(esp_a2d_sink_connect(second_addr));
 				}
 				break;
 
 			case state_t::A2DP_TO_A2DP_3:
 				if (msg == msg_t::A2DP_CONNECTED)
 				{
-					// Connected other A2DP
-					ESP_LOGI(TAG, "A2DP_TO_A2DP 3 -> END");
+					ESP_LOGI(TAG, "A2DP_TO_A2DP Finished");
 					state = state_t::IDLE;
 				}
 				break;
@@ -253,8 +247,7 @@ namespace
 			case state_t::A2DP_TO_BLE_0:
 				if (msg == msg_t::A2DP_TO_BLE_START)
 				{
-					// Stopping media
-					ESP_LOGI(TAG, "A2DP_TO_BLE 0 -> 1");
+					ESP_LOGI(TAG, "A2DP_TO_BLE Stop media stream");
 					state = state_t::A2DP_TO_BLE_1;
 					ESP_ERROR_CHECK(esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP));
 				}
@@ -263,8 +256,7 @@ namespace
 			case state_t::A2DP_TO_BLE_1:
 				if (msg == msg_t::A2DP_MEDIA_STOPPED)
 				{
-					// Stopped media, disconnecting A2DP
-					ESP_LOGI(TAG, "A2DP_TO_BLE 1 -> 2");
+					ESP_LOGI(TAG, "A2DP_TO_BLE Disconnect A2DP");
 					state = state_t::A2DP_TO_BLE_2;
 					ESP_ERROR_CHECK(esp_a2d_sink_disconnect(first_addr));
 				}
@@ -274,7 +266,7 @@ namespace
 				if (msg == msg_t::A2DP_DISCONNECTED)
 				{
 					// Disconnected A2DP
-					ESP_LOGI(TAG, "A2DP_TO_BLE 2 -> END");
+					ESP_LOGI(TAG, "A2DP_TO_BLE Finished");
 					state = state_t::IDLE;
 				}
 				break;
