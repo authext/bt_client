@@ -46,6 +46,7 @@ namespace
 		BLE_TO_A2DP_0,
 		BLE_TO_A2DP_1,
 		BLE_TO_A2DP_2,
+		BLE_TO_A2DP_3,
 
 		A2DP_TO_A2DP_0,
 		A2DP_TO_A2DP_1,
@@ -77,6 +78,7 @@ namespace
 
 		A2DP_CONNECTED,
 		A2DP_MEDIA_STOPPED,
+		A2DP_MEDIA_STARTED,
 		A2DP_DISCONNECTING,
 		A2DP_DISCONNECTED,
 	};
@@ -206,7 +208,7 @@ namespace
 					// Disconnected BLE, connecting A2DP
 					ESP_LOGI(TAG, "BLE_TO_A2DP 1 -> 2");
 					state = state_t::BLE_TO_A2DP_2;
-					a2dp_cb::connect(first_addr);
+					esp_a2d_sink_connect(first_addr);
 				}
 				break;
 
@@ -247,7 +249,7 @@ namespace
 					// Disconnected A2DP, connecting other A2DP
 					ESP_LOGI(TAG, "A2DP_TO_A2DP 2 -> 3");
 					state = state_t::A2DP_TO_A2DP_3;
-					a2dp_cb::connect(second_addr);
+					esp_a2d_sink_connect(second_addr);
 				}
 				break;
 
@@ -454,6 +456,11 @@ namespace glue
 	void notify_a2dp_connected()
 	{
 		send_msg(messages, msg_t::A2DP_CONNECTED);
+	}
+
+	void notify_a2dp_media_started()
+	{
+		send_msg(messages, msg_t::A2DP_MEDIA_STARTED);
 	}
 
 	void notify_a2dp_media_stopped()

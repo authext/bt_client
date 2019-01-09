@@ -24,6 +24,7 @@ namespace glue
 	void notify_ble_disconnected();
 
 	void notify_a2dp_connected();
+	void notify_a2dp_media_started();
 	void notify_a2dp_media_stopped();
 	void notify_a2dp_disconnecting();
 	void notify_a2dp_disconnected();

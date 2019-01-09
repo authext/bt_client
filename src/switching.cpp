@@ -21,7 +21,7 @@ namespace switching
 
 		ESP_LOGI(TAG, "Max rms from %d: %d", max_idx, max_rms);
 
-		if (max_rms > rms[current_a2dp_idx])
+		if (current_a2dp_idx == - 1 || max_rms > rms[current_a2dp_idx])
 		{
 			ESP_LOGI(
 				TAG,
@@ -32,7 +32,7 @@ namespace switching
 			if (current_a2dp_idx == -1)
 			{
 				current_a2dp_idx = max_idx;
-				//glue::ble_to_a2dp(bda[current_a2dp_idx]);
+				glue::ble_to_a2dp(bda[current_a2dp_idx]);
 				ESP_LOGI(TAG, "Would call BLE to A2DP for %d", max_idx);
 			}
 			else

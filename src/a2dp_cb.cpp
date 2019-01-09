@@ -23,51 +23,46 @@ namespace
 {
     constexpr auto TAG = "A2DP_CB";
 
-    enum class state_t
-    {
-        IDLE,
-        CONNECTING,
-        CONNECTED,
-        DISCONNECTING,
-    };
-
-    enum class media_state_t
-    {
-        IDLE,
-        STARTING,
-        STARTED,
-        STOPPING,
-    };
-
     esp_bd_addr_t peer_bda;
-    state_t m_a2d_state = state_t::IDLE;
-    media_state_t m_media_state = media_state_t::IDLE;
-    int m_connecting_intv = 0;
     std::uint32_t m_pkt_cnt = 0;
 
-    void state_connecting(std::uint16_t event, void *param)
+    void callback(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *a2d)
     {
-        const auto *a2d = (esp_a2d_cb_param_t *)param;
-
         switch (event)
         {
         case ESP_A2D_CONNECTION_STATE_EVT:
             if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED)
             {
                 ESP_LOGI(TAG, "A2DP connected");
-                m_a2d_state =  state_t::CONNECTED;
-                m_media_state = media_state_t::STARTING;
                 glue::notify_a2dp_connected();
+            }
+            else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTING)
+            {
+                ESP_LOGI(TAG, "A2DP disconnecting");
+                glue::notify_a2dp_disconnecting();
             }
             else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
             {
+                ESP_LOGI(TAG, "A2DP disconnected");
                 std::memset(peer_bda, 0, sizeof(esp_bd_addr_t));
-                m_a2d_state = state_t::IDLE;
+                glue::notify_a2dp_disconnected();
             }
             break;
 
         case ESP_A2D_AUDIO_STATE_EVT:
+            if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STARTED)
+            {
+                m_pkt_cnt = 0;
+                glue::notify_a2dp_media_started();
+            }
+            else if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STOPPED)
+            {
+                glue::notify_a2dp_media_stopped();
+            }
+            break;
+
         case ESP_A2D_MEDIA_CTRL_ACK_EVT:
+            ESP_LOGI(TAG, "Media ctrl ack event");
             break;
 
         case ESP_A2D_AUDIO_CFG_EVT:
@@ -79,8 +74,8 @@ namespace
             // for now only SBC stream is supported
             if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC)
             {
-                int sample_rate = 16000;
-                char oct0 = a2d->audio_cfg.mcc.cie.sbc[0];
+                auto sample_rate = 16000;
+                const auto oct0 = a2d->audio_cfg.mcc.cie.sbc[0];
                 if (oct0 & (0x01 << 6))
                     sample_rate = 32000;
                 else if (oct0 & (0x01 << 5))
@@ -105,114 +100,6 @@ namespace
             ESP_LOGE(TAG, "%s unhandled evt %d", __func__, event);
             break;
         }
-    }
-
-    void state_connected(std::uint16_t event, void *param)
-    {
-        const auto *a2d = (esp_a2d_cb_param_t *)param;
-
-        switch (event)
-        {
-        case ESP_A2D_CONNECTION_STATE_EVT:
-            if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTING)
-            {
-                ESP_LOGI(TAG, "A2DP disconnecting");
-                m_a2d_state = state_t::DISCONNECTING;
-                glue::notify_a2dp_disconnecting();
-            }
-            break;
-
-        case ESP_A2D_AUDIO_STATE_EVT:
-            if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STARTED)
-            {
-                m_pkt_cnt = 0;
-            }
-            else if (a2d->audio_stat.state == ESP_A2D_AUDIO_STATE_STOPPED)
-            {
-                glue::notify_a2dp_media_stopped();
-            }
-
-            break;
-
-        case ESP_A2D_MEDIA_CTRL_ACK_EVT:
-            break;
-
-        default:
-            ESP_LOGE(TAG, "%s unhandled evt %d", __func__, event);
-            break;
-        }
-    }
-
-    void state_disconnecting(std::uint16_t event, void *param)
-    {
-        const auto *a2d = (esp_a2d_cb_param_t *)param;
-
-        switch (event)
-        {
-        case ESP_A2D_CONNECTION_STATE_EVT:
-            if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED)
-            {
-                ESP_LOGI(TAG, "A2DP disconnected");
-                m_a2d_state =  state_t::IDLE;
-                glue::notify_a2dp_disconnected();
-            }
-            break;
-
-        case ESP_A2D_AUDIO_STATE_EVT:
-        case ESP_A2D_AUDIO_CFG_EVT:
-        case ESP_A2D_MEDIA_CTRL_ACK_EVT:
-            break;
-
-        default:
-            ESP_LOGE(TAG, "%s unhandled evt %d", __func__, event);
-            break;
-        }
-    }
-
-    void state_machine(std::uint16_t event, void *param)
-    {
-        ESP_LOGI(
-            TAG,
-            "%s state %d, evt 0x%x",
-            __func__,
-            static_cast<int>(m_a2d_state),
-            event);
-
-        switch (m_a2d_state)
-        {
-        case state_t::IDLE:
-            m_connecting_intv = 0;
-            break;
-
-        case state_t::CONNECTING:
-            state_connecting(event, param);
-            break;
-
-        case state_t::CONNECTED:
-            state_connected(event, param);
-            break;
-
-        case state_t::DISCONNECTING:
-            state_disconnecting(event, param);
-            break;
-
-        default:
-            ESP_LOGE(
-                TAG,
-                "%s invalid state %d",
-                __func__,
-                static_cast<int>(m_a2d_state));
-            break;
-        }
-    }
-
-    void callback(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
-    {
-        a2dp_core::dispatch(
-            state_machine,
-            event,
-            param,
-            sizeof(esp_a2d_cb_param_t));
     }
 
     void data_callback(const std::uint8_t *data, std::uint32_t len)
@@ -273,16 +160,5 @@ namespace a2dp_cb
         ESP_ERROR_CHECK(esp_a2d_sink_register_data_callback(data_callback));
         ESP_ERROR_CHECK(esp_a2d_sink_init());
         ESP_ERROR_CHECK(esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE));
-    }
-
-    esp_err_t connect(const esp_bd_addr_t addr)
-    {
-        std::memcpy(peer_bda, addr, sizeof(esp_bd_addr_t));
-
-        m_a2d_state = state_t::CONNECTING;
-        esp_err_t ret = esp_a2d_sink_connect(peer_bda);
-        if (ret != ESP_OK)
-            m_a2d_state = state_t::IDLE;
-        return ret;
     }
 }
