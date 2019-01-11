@@ -8,7 +8,7 @@
 // ESP includes
 #include "esp_gattc_api.h"
 // My includes
-#include "bluetooth_server.hpp"
+#include "bluetooth_server_info.hpp"
 
 class state_machine
 {
@@ -50,7 +50,7 @@ public:
 	/* Methods */
 	void start();
 	// Switches from idle to (N BLE, 0 A2DP). Should be run only once, after scanning
-	void idle_to_ble(std::uint16_t interface, std::vector<bluetooth_server> *servers);
+	void idle_to_ble(std::uint16_t interface, std::vector<bluetooth_server_info> *servers);
 	// Switches from (N BLE, 0 A2DP) to (N - 1 BLE, 1 A2DP)
 	void ble_to_a2dp(esp_bd_addr_t ble_addr);
 	// Switches from (N - 1 BLE, 1 A2DP) to (N - 1 BLE, 1 A2DP)
@@ -75,7 +75,7 @@ private:
 	std::queue<msg_t> m_messages;
 	std::mutex m_message_mutex;
 
-	std::vector<bluetooth_server> *m_servers;
+	std::vector<bluetooth_server_info> *m_servers;
 
 	/* Methods */
 	void handler();

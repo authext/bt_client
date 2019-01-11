@@ -9,7 +9,7 @@
 // C includes
 #include <cstdint>
 // My includes
-#include "bluetooth_server.hpp"
+#include "bluetooth_server_info.hpp"
 #include "state_machine.hpp"
 // ESP includes
 #include "esp_a2dp_api.h"
@@ -44,7 +44,7 @@ public:
 
 private:
 	/* Members */
-	std::vector<bluetooth_server> m_servers;
+	std::vector<bluetooth_server_info> m_servers;
 	state_machine m_sm;
 	decltype(m_servers)::const_iterator m_peer;
 	std::uint16_t m_interface;

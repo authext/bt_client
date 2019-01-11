@@ -60,7 +60,7 @@ namespace
 	};
 	auto state = state_t::IDLE;
 
-	std::vector<bluetooth_server>::iterator to_connect;
+	std::vector<bluetooth_server_info>::iterator to_connect;
 	std::uint16_t interface;
 	int saved_conn_id;
 
@@ -73,7 +73,7 @@ void state_machine::start()
 	std::thread([this]() { handler(); }).detach();
 }
 
-void state_machine::idle_to_ble(std::uint16_t iface, std::vector<bluetooth_server> *servers)
+void state_machine::idle_to_ble(std::uint16_t iface, std::vector<bluetooth_server_info> *servers)
 {
 	ESP_LOGI(TAG, "idle->ble");
 
