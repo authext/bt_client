@@ -1,5 +1,5 @@
-#ifndef BLUETOOTH_ADDRESS
-#define BLUETOOTH_ADDRESS
+#ifndef BLUETOOTH_ADDRESS_HPP
+#define BLUETOOTH_ADDRESS_HPP
 
 // C++ includes
 #include <iosfwd>

@@ -1,5 +1,5 @@
-#ifndef GLUE_HPP
-#define GLUE_HPP
+#ifndef STATE_MACHINE_HPP
+#define STATE_MACHINE_HPP
 
 // C++ includes
 #include <mutex>
