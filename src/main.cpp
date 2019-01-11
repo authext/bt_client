@@ -13,9 +13,8 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 // My includes
-#include "a2dp_cb.hpp"
-#include "gattc.hpp"
-#include "glue.hpp"
+#include "state_machine.hpp"
+#include "bluetooth_client.hpp"
 
 namespace
 {
@@ -27,18 +26,5 @@ extern "C" void app_main()
     ESP_ERROR_CHECK(nvs_flash_erase());
     ESP_ERROR_CHECK(nvs_flash_init());
 
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_bt_controller_init(&bt_cfg));
-    ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BTDM));
-    ESP_ERROR_CHECK(esp_bluedroid_init());
-    ESP_ERROR_CHECK(esp_bluedroid_enable());
-
-    a2dp_cb::init_stack(0, nullptr);
-
-    glue::start_handler();
-
-    ESP_ERROR_CHECK(esp_ble_gap_register_callback(gattc::esp_gap_cb));
-    ESP_ERROR_CHECK(esp_ble_gattc_register_callback(gattc::esp_gattc_cb));
-    ESP_ERROR_CHECK(esp_ble_gattc_app_register(0));
-    ESP_ERROR_CHECK(esp_ble_gatt_set_local_mtu(500));
+    bluetooth_client::instance().start();
 }
