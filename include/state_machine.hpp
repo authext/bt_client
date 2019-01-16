@@ -58,11 +58,11 @@ public:
 	// Switches from idle to (N BLE, 0 A2DP). Should be run only once, after scanning
 	void idle_to_ble(std::uint16_t interface, std::vector<bluetooth_server_info> *servers);
 	// Switches from (N BLE, 0 A2DP) to (N - 1 BLE, 1 A2DP)
-	void ble_to_a2dp(esp_bd_addr_t ble_addr);
+	void ble_to_a2dp(bluetooth_address ble_addr);
 	// Switches from (N - 1 BLE, 1 A2DP) to (N - 1 BLE, 1 A2DP)
-	void a2dp_to_a2dp(esp_bd_addr_t old_addr, esp_bd_addr_t new_addr);
+	void a2dp_to_a2dp(bluetooth_address old_addr, bluetooth_address new_addr);
 	// Switches from (N - 1 BLE, 1 A2DP) to (N BLE, 0 A2DP)
-	void a2dp_to_ble(esp_bd_addr_t addr);
+	void a2dp_to_ble(bluetooth_address addr);
 	void notify_scan_finished();
 	void notify_ble_opened(int conn_id);
 	void notify_mtu_configured();
