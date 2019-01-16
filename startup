@@ -15,7 +15,7 @@ python\
 	0x10000 build/client.bin\
 	0x8000 build/partitions_singleapp.bin
 
-winpty\
+
 	python\
 	$IDF_PATH/tools/idf_monitor.py\
 	--baud 115200\
