@@ -20,6 +20,31 @@ class state_machine
 {
 public:
 	/* Inner types */
+	enum class state_t
+	{
+		IDLE,
+		BLE,
+		A2DP,
+
+		IDLE_TO_BLE_0,
+		IDLE_TO_BLE_1,
+		IDLE_TO_BLE_2,
+		IDLE_TO_BLE_3,
+		IDLE_TO_BLE_4,
+
+		BLE_TO_A2DP_0,
+		BLE_TO_A2DP_1,
+
+		A2DP_TO_A2DP_0,
+		A2DP_TO_A2DP_1,
+		A2DP_TO_A2DP_2,
+		A2DP_TO_A2DP_3,
+
+		A2DP_TO_BLE_0,
+		A2DP_TO_BLE_1,
+		A2DP_TO_BLE_2,
+	};
+
 	enum class msg_t
 	{
 		IDLE_TO_BLE_START,
@@ -82,6 +107,7 @@ private:
 	std::mutex m_message_mutex;
 
 	std::vector<bluetooth_server_info> *m_servers;
+	state_t m_state = state_t::IDLE;
 	std::optional<bluetooth_address> m_first_address;
 	std::optional<bluetooth_address> m_second_address;
 
