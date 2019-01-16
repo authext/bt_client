@@ -63,9 +63,6 @@ namespace
 	std::vector<bluetooth_server_info>::iterator to_connect;
 	std::uint16_t interface;
 	int saved_conn_id;
-
-	esp_bd_addr_t first_addr;
-	esp_bd_addr_t second_addr;
 }
 
 void state_machine::start()
@@ -99,7 +96,8 @@ void state_machine::ble_to_a2dp(esp_bd_addr_t ble_addr)
 		return;
 	}
 
-	std::memcpy(first_addr, ble_addr, sizeof(esp_bd_addr_t));
+	m_first_address = bluetooth_address(ble_addr);
+	m_second_address = {};
 
 	state = state_t::BLE_TO_A2DP_0;
 	notify_ble_to_a2dp_start();
@@ -115,8 +113,8 @@ void state_machine::a2dp_to_a2dp(esp_bd_addr_t old_addr, esp_bd_addr_t new_addr)
 		return;
 	}
 
-	memcpy(first_addr, old_addr, sizeof(esp_bd_addr_t));
-	memcpy(second_addr, new_addr, sizeof(esp_bd_addr_t));
+	m_first_address = bluetooth_address(old_addr);
+	m_second_address = bluetooth_address(new_addr);
 
 	state = state_t::A2DP_TO_A2DP_0;
 	notify_a2dp_to_a2dp_start();
@@ -132,7 +130,8 @@ void state_machine::a2dp_to_ble(esp_bd_addr_t addr)
 		return;
 	}
 
-	memcpy(first_addr, addr, sizeof(esp_bd_addr_t));
+	m_first_address = bluetooth_address(addr);
+	m_second_address = {};
 
 	state = state_t::A2DP_TO_BLE_0;
 	notify_a2dp_to_ble_start();
@@ -293,7 +292,7 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "BLE_TO_A2DP Connect A2DP");
 				state = state_t::BLE_TO_A2DP_1;
-				ESP_ERROR_CHECK(esp_a2d_sink_connect(first_addr));
+				ESP_ERROR_CHECK(esp_a2d_sink_connect(m_first_address.value()));
 			}
 			break;
 
@@ -321,7 +320,7 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "A2DP_TO_A2DP Disconnect A2DP");
 				state = state_t::A2DP_TO_A2DP_2;
-				ESP_ERROR_CHECK(esp_a2d_sink_disconnect(first_addr));
+				ESP_ERROR_CHECK(esp_a2d_sink_disconnect(m_first_address.value()));
 			}
 			break;
 
@@ -330,7 +329,7 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "A2DP_TO_A2DP Connect other A2DP");
 				state = state_t::A2DP_TO_A2DP_3;
-				ESP_ERROR_CHECK(esp_a2d_sink_connect(second_addr));
+				ESP_ERROR_CHECK(esp_a2d_sink_connect(m_second_address.value()));
 			}
 			break;
 
@@ -358,7 +357,7 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "A2DP_TO_BLE Disconnect A2DP");
 				state = state_t::A2DP_TO_BLE_2;
-				ESP_ERROR_CHECK(esp_a2d_sink_disconnect(first_addr));
+				ESP_ERROR_CHECK(esp_a2d_sink_disconnect(m_first_address.value()));
 			}
 			break;
 

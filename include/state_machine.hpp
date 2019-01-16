@@ -2,6 +2,7 @@
 #define STATE_MACHINE_HPP
 
 // C++ includes
+#include <experimental/optional>
 #include <mutex>
 #include <queue>
 #include <vector>
@@ -9,6 +10,11 @@
 #include "esp_gattc_api.h"
 // My includes
 #include "bluetooth_server_info.hpp"
+
+namespace std
+{
+	using namespace experimental;
+}
 
 class state_machine
 {
@@ -76,6 +82,8 @@ private:
 	std::mutex m_message_mutex;
 
 	std::vector<bluetooth_server_info> *m_servers;
+	std::optional<bluetooth_address> m_first_address;
+	std::optional<bluetooth_address> m_second_address;
 
 	/* Methods */
 	void handler();
