@@ -289,7 +289,6 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "BLE_TO_A2DP Failed");
 				m_state = state_t::BLE;
-				m_first_address = {};
 			}
 			break;
 

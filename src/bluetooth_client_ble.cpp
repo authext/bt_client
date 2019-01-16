@@ -203,7 +203,7 @@ void bluetooth_client::ble_gattc_callback(
     		});
     	if (it != end(m_servers))
     		it->activator(param->notify.value[0]);
-    	handle_rms_notification();
+    	handle_activator_notification();
     	break;
     }
 
@@ -220,7 +220,7 @@ void bluetooth_client::ble_gattc_callback(
     }
 }
 
-void bluetooth_client::handle_rms_notification()
+void bluetooth_client::handle_activator_notification()
 {
     const auto max_it = std::max_element(
         cbegin(m_servers),
@@ -229,8 +229,6 @@ void bluetooth_client::handle_rms_notification()
         {
             return l.activator() < r.activator();
         });
-    const auto max_rms = *max_it;
-    const auto max_idx = std::distance(cbegin(m_servers), max_it);
 
     const auto current_it = std::find_if(
         cbegin(m_servers),
@@ -241,36 +239,27 @@ void bluetooth_client::handle_rms_notification()
         });
 
     const auto addr = to_string(max_it->address());
-    ESP_LOGI(TAG, "Max rms from %s: %d", addr.c_str(), max_it->activator());
+    ESP_LOGI(TAG, "Max activator from %s: %d", addr.c_str(), max_it->activator());
 
-    if (current_a2dp_idx == - 1 || max_rms.activator() > m_servers[current_a2dp_idx].activator())
+    if (!m_sm.a2dp_address())
     {
-        ESP_LOGI(
-            TAG,
-            "Better than current, switching from %d to %d",
-            current_a2dp_idx,
-            max_idx);
-
-        if (current_a2dp_idx == -1)
-        {
-            current_a2dp_idx = max_idx;
-            m_sm.ble_to_a2dp(m_servers[current_a2dp_idx].address());
-            ESP_LOGI(TAG, "Would call BLE to A2DP for %d", max_idx);
-        }
-        else
-        {
-            int old_a2dp_idx = current_a2dp_idx;
-            current_a2dp_idx = max_idx;
-            m_sm.a2dp_to_a2dp(
-              m_servers[old_a2dp_idx].address(),
-              m_servers[current_a2dp_idx].address());
-            ESP_LOGI(TAG, "Would call A2DP to A2DP for %d", max_idx);
-        }
+        ESP_LOGI(TAG, "Want to switch from BLE to A2DP");
+        m_sm.ble_to_a2dp(max_it->address());
     }
-    else if (m_servers[current_a2dp_idx].activator() <= 2)
+    else if (max_it->activator() > current_it->activator())
     {
-        ESP_LOGI(TAG, "Would call A2DP to BLE for %d", current_a2dp_idx);
-        m_sm.a2dp_to_ble(m_servers[current_a2dp_idx].address());
-        current_a2dp_idx = -1;
+        ESP_LOGI(TAG, "Want to swtich from A2DP to A2DP");
+        m_sm.a2dp_to_a2dp(
+            current_it->address(),
+            max_it->address());
+    }
+    else if (current_it->activator() <= 2)
+    {
+        ESP_LOGI(TAG, "Want to switch from A2DP to BLE");
+        m_sm.a2dp_to_ble(current_it->address()); 
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Nothing to happen in regards to switching");
     }
 }

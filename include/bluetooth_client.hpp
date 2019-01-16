@@ -70,8 +70,7 @@ private:
 		esp_gatt_if_t gattc_if,
 		esp_ble_gattc_cb_param_t *param);
 
-	int current_a2dp_idx = -1;
-	void handle_rms_notification();
+	void handle_activator_notification();
 };
 
 #endif
