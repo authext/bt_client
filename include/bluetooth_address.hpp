@@ -3,6 +3,7 @@
 
 // C++ includes
 #include <iosfwd>
+#include <string>
 // ESP includes
 #include "esp_bt_device.h"
 
@@ -37,5 +38,7 @@ bool operator==(const bluetooth_address& l, const bluetooth_address& r);
 bool operator!=(const bluetooth_address& l, const bluetooth_address& r);
 
 std::ostream& operator<<(std::ostream& out, const bluetooth_address& addr);
+
+std::string to_string(const bluetooth_address& addr);
 
 #endif

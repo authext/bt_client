@@ -232,7 +232,16 @@ void bluetooth_client::handle_rms_notification()
     const auto max_rms = *max_it;
     const auto max_idx = std::distance(cbegin(m_servers), max_it);
 
-    ESP_LOGI(TAG, "Max rms from %d: %d", max_idx, max_rms.activator());
+    const auto current_it = std::find_if(
+        cbegin(m_servers),
+        cend(m_servers),
+        [this](const auto& s)
+        {
+            return s.address() == m_sm.a2dp_address();
+        });
+
+    const auto addr = to_string(max_it->address());
+    ESP_LOGI(TAG, "Max rms from %s: %d", addr.c_str(), max_it->activator());
 
     if (current_a2dp_idx == - 1 || max_rms.activator() > m_servers[current_a2dp_idx].activator())
     {

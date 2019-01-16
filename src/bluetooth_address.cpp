@@ -3,6 +3,7 @@
 // C++ includes
 #include <ostream>
 // C includes
+#include <cstdio>
 #include <cstring>
 
 bluetooth_address::bluetooth_address(esp_bd_addr_t addr)
@@ -42,14 +43,19 @@ bool operator!=(const bluetooth_address& l, const bluetooth_address& r)
 
 std::ostream& operator<<(std::ostream& out, const bluetooth_address& addr)
 {
-	static const auto will_be_sep = ":";
-	const auto *sep = "";
-
-	for (auto i = 0; i < ESP_BD_ADDR_LEN; i++)
-	{
-		out << addr[i] << sep;
-		sep = will_be_sep;
-	}
-	
+	out << to_string(addr);
 	return out;
+}
+
+std::string to_string(const bluetooth_address& addr)
+{
+	// Kill me
+	char buffer[ESP_BD_ADDR_LEN * 2 + (ESP_BD_ADDR_LEN - 1) + 1] = "";
+
+	static const auto sep = ":";
+	std::sprintf(buffer, "%02x", addr[0]);
+	for (auto i = 1; i < ESP_BD_ADDR_LEN; i++)
+		std::sprintf(buffer + 2 + 3*(i - 1), "%s%02x", sep, addr[i]);
+
+	return buffer;
 }

@@ -41,6 +41,11 @@ namespace
 	int saved_conn_id;
 }
 
+const std::optional<bluetooth_address>& state_machine::a2dp_address() const
+{
+	return m_first_address;
+}
+
 void state_machine::start()
 {
 	std::thread([this]() { handler(); }).detach();
@@ -284,6 +289,7 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "BLE_TO_A2DP Failed");
 				m_state = state_t::BLE;
+				m_first_address = {};
 			}
 			break;
 
@@ -321,6 +327,8 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "A2DP_TO_A2DP Finished");
 				m_state = state_t::A2DP;
+				m_first_address = m_second_address;
+				m_second_address = {};
 			}
 			break;
 
@@ -350,6 +358,7 @@ void state_machine::handler()
 				// Disconnected A2DP
 				ESP_LOGI(TAG, "A2DP_TO_BLE Finished");
 				m_state = state_t::BLE;
+				m_first_address = {};
 			}
 			break;
 

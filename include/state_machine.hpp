@@ -74,6 +74,9 @@ public:
 	/* Destructor */
 	~state_machine() = default;
 
+	/* Getters */
+	const std::optional<bluetooth_address>& a2dp_address() const;
+
 	/* Operators */
 	state_machine& operator=(const state_machine&) = delete;
 	state_machine& operator=(state_machine&&) = default;
