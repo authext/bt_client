@@ -25,12 +25,6 @@ void bluetooth_client::ble_gap_callback(esp_gap_ble_cb_event_t event, esp_ble_ga
 				param->scan_rst.bda,
 				6);
 
-			ESP_LOGI(
-				TAG,
-				"searched Adv Data Len %d, Scan Response Len %d",
-				param->scan_rst.adv_data_len,
-				param->scan_rst.scan_rsp_len);
-
 			std::uint8_t adv_name_len;
 			const auto *adv_name = (char *)esp_ble_resolve_adv_data(
 				param->scan_rst.ble_adv,
@@ -43,10 +37,6 @@ void bluetooth_client::ble_gap_callback(esp_gap_ble_cb_event_t event, esp_ble_ga
 			constexpr auto DEVICE_NAME = "SERVER";
 			if (strncmp(adv_name, DEVICE_NAME, strlen(DEVICE_NAME)) == 0)
 			{
-                esp_log_buffer_hex(
-                    TAG,
-                    param->scan_rst.bda,
-                    sizeof(esp_bd_addr_t));
                 const auto it = std::find_if(
                     cbegin(m_servers),
                     cend(m_servers),
@@ -55,7 +45,12 @@ void bluetooth_client::ble_gap_callback(esp_gap_ble_cb_event_t event, esp_ble_ga
                         return val.address() == bluetooth_address(param->scan_rst.bda);
                     });
                 if (it == cend(m_servers))
+                {
+                    ESP_LOGI(TAG, "Adding server with address %s and RSSI %d",
+                        to_string(bluetooth_address(param->scan_rst.bda)).c_str(),
+                        param->scan_rst.rssi);
                     m_servers.emplace_back(param->scan_rst.bda);
+                }
 			}
 			break;
 		}
