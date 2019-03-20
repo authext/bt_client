@@ -217,11 +217,20 @@ void state_machine::handler()
 		case state_t::IDLE_TO_BLE_1:
 			if (msg == msg_t::SCAN_FINISHED)
 			{
-				ESP_LOGI(TAG, "IDLE_TO_BLE Kickstart connections");
-				m_state = state_t::IDLE_TO_BLE_2;
-				to_connect = begin(*m_servers);
-				// Send an "empty" connected message to kickstart connecting process
-				notify_ble_connected();
+				if (m_servers->empty())
+				{
+					ESP_LOGI(TAG, "IDLE_TO_BLE No servers found. Restarting");
+					m_state = state_t::IDLE_TO_BLE_0;
+					notify_idle_to_ble_start();
+				}
+				else
+				{
+					ESP_LOGI(TAG, "IDLE_TO_BLE Kickstart connections");
+					m_state = state_t::IDLE_TO_BLE_2;
+					to_connect = begin(*m_servers);
+					// Send an "empty" connected message to kickstart connecting process
+					notify_ble_connected();
+				}
 			}
 			break;
 
