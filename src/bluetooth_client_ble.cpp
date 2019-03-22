@@ -2,11 +2,15 @@
 #include "bluetooth_client.hpp"
 // C++ includes
 #include <algorithm>
+#include <chrono>
+#include <thread>
 // C includes
 #include <cstring>
 // ESP includes
 #include "esp_gap_ble_api.h"
 #include "esp_log.h"
+
+using namespace std::literals;
 
 namespace
 {
@@ -20,11 +24,6 @@ void bluetooth_client::ble_gap_callback(esp_gap_ble_cb_event_t event, esp_ble_ga
     case ESP_GAP_BLE_SCAN_RESULT_EVT:
     	if (param->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_RES_EVT)
     	{
-			esp_log_buffer_hex(
-				TAG,
-				param->scan_rst.bda,
-				6);
-
 			std::uint8_t adv_name_len;
 			const auto *adv_name = (char *)esp_ble_resolve_adv_data(
 				param->scan_rst.ble_adv,
@@ -121,19 +120,13 @@ void bluetooth_client::ble_gattc_callback(
 
     case ESP_GATTC_CONNECT_EVT:
     {
+        const auto conn_id = param->connect.conn_id;
+
         ESP_LOGI(
         	TAG,
 			"ESP_GATTC_CONNECT_EVT conn_id %d, if %d",
-			param->connect.conn_id,
-			gattc_if);
-        const auto conn_id = param->connect.conn_id;
-        ESP_LOGI(
-        	TAG,
-			"REMOTE BDA:");
-        esp_log_buffer_hex(
-        	TAG,
-			param->connect.remote_bda,
-			sizeof(esp_bd_addr_t));
+			conn_id,
+			gattc_if);   
         auto it = std::find_if(
         	begin(m_servers),
         	end(m_servers),
@@ -142,7 +135,18 @@ void bluetooth_client::ble_gattc_callback(
         		return val.address() == bluetooth_address(param->connect.remote_bda);
         	});
         if (it != end(m_servers))
-        	it->conn_id(conn_id);
+        	it->conn_id() = conn_id;
+        esp_ble_conn_update_params_t conn_params = {};
+        std::memcpy(
+            conn_params.bda,
+            param->connect.remote_bda,
+            sizeof(esp_bd_addr_t));
+        conn_params.latency = 0;
+        conn_params.max_int = 3200;    // * 1.25ms
+        conn_params.min_int = 3200;    // * 1.25ms
+        conn_params.timeout = 400;     // * 10ms
+        //start sent the update connection parameters to the peer device.
+        esp_ble_gap_update_conn_params(&conn_params);
         m_sm.notify_ble_opened(conn_id);
         break;
     }
@@ -197,17 +201,28 @@ void bluetooth_client::ble_gattc_callback(
     			return param->notify.conn_id == val.conn_id();
     		});
     	if (it != end(m_servers))
-    		it->activator(param->notify.value[0]);
+    		it->activator() = param->notify.value[0];
     	handle_activator_notification();
     	break;
     }
 
     case ESP_GATTC_DISCONNECT_EVT:
+    {
+        auto it = std::find_if(
+            begin(m_servers),
+            end(m_servers),
+            [param](const auto& val)
+            {
+                return bluetooth_address(param->disconnect.remote_bda) == val.address();
+            });
+        it->ble_connected() = false;
+
         ESP_LOGI(
         	TAG,
 			"ESP_GATTC_DISCONNECT_EVT, reason = %d",
 			param->disconnect.reason);
         m_sm.notify_ble_disconnected();
+    }
         break;
 
     default:
@@ -217,6 +232,8 @@ void bluetooth_client::ble_gattc_callback(
 
 void bluetooth_client::handle_activator_notification()
 {
+    static size_t i = 0;
+
     const auto max_it = std::max_element(
         cbegin(m_servers),
         cend(m_servers),
@@ -225,33 +242,27 @@ void bluetooth_client::handle_activator_notification()
             return l.activator() < r.activator();
         });
 
-    const auto current_it = std::find_if(
-        cbegin(m_servers),
-        cend(m_servers),
-        [this](const auto& s)
-        {
-            return s.address() == m_sm.a2dp_address();
-        });
-
     const auto addr = to_string(max_it->address());
     ESP_LOGI(TAG, "Max activator from %s: %d", addr.c_str(), max_it->activator());
 
-    if (!m_sm.a2dp_address())
+    // If there is no active A2DP connection and the maximum activator is big enough,
+    // then we should switch to A2DP.
+    if (i > 0)
     {
-        ESP_LOGI(TAG, "Want to switch from BLE to A2DP");
+        ESP_LOGI(TAG, "MAXIMUM REACHED");
+    }
+    else if (!m_sm.a2dp_address() && max_it->activator() > 2)
+    {
+        ESP_LOGI(TAG, "Want to switch from BLE to A2DP (%d)", i);
         m_sm.ble_to_a2dp(max_it->address());
-    }
-    else if (max_it->activator() > current_it->activator())
-    {
-        ESP_LOGI(TAG, "Want to swtich from A2DP to A2DP");
-        m_sm.a2dp_to_a2dp(
-            current_it->address(),
-            max_it->address());
-    }
-    else if (current_it->activator() <= 2)
-    {
-        ESP_LOGI(TAG, "Want to switch from A2DP to BLE");
-        m_sm.a2dp_to_ble(current_it->address()); 
+
+        i++;
+
+        std::thread([this]()
+        {
+            std::this_thread::sleep_for(3600s);
+            m_sm.a2dp_to_ble();
+        }).detach();
     }
     else
     {

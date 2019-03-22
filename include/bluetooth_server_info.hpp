@@ -25,24 +25,20 @@ public:
 	bluetooth_server_info& operator=(bluetooth_server_info&&) = default;
 
 	/* Getters */
-	bluetooth_address& address();
 	const bluetooth_address& address() const;
-
-	std::uint8_t& activator();
+	bluetooth_address& address();
 	const std::uint8_t& activator() const;
-
-	std::uint16_t& conn_id();
+	std::uint8_t& activator();
 	const std::uint16_t& conn_id() const;
-
-	/* Setters */
-	bluetooth_address& address(bluetooth_address address);
-	std::uint8_t& activator(std::uint8_t activator);
-	std::uint16_t& conn_id(std::uint16_t conn_id);
+	std::uint16_t& conn_id();
+	const bool& ble_connected() const;
+	bool& ble_connected();
 
 private:
 	bluetooth_address m_address;
 	std::uint16_t m_conn_id;
 	std::uint8_t m_activator;
+	bool m_ble_connected;
 };
 
 bool operator==(const bluetooth_server_info& l, const bluetooth_server_info& r);

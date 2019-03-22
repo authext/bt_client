@@ -21,8 +21,6 @@
 #include "esp_log.h"
 // My includes
 #include "state_machine.hpp"
-
-
 #include "bluetooth_client.hpp"
 
 namespace std
@@ -35,15 +33,23 @@ using namespace std::literals;
 namespace
 {
 	constexpr auto TAG = "STATE_MACHINE";
+}
 
-	std::vector<bluetooth_server_info>::iterator to_connect;
-	std::uint16_t interface;
-	int saved_conn_id;
+bool state_machine::is_priority_over(const priority_msg_t& l, const priority_msg_t& r)
+{
+	return l.priority < r.priority;
+}
+
+state_machine::state_machine()
+	: m_messages(is_priority_over)
+	, m_state(state_t::IDLE)
+	, m_saved_state(state_t::IDLE)
+{
 }
 
 const std::optional<bluetooth_address>& state_machine::a2dp_address() const
 {
-	return m_first_address;
+	return m_a2dp_address;
 }
 
 void state_machine::start()
@@ -62,12 +68,12 @@ void state_machine::idle_to_ble(std::uint16_t iface, std::vector<bluetooth_serve
 	}
 
 	m_servers = servers;
-	interface = iface;
+	m_interface = iface;
 	m_state = state_t::IDLE_TO_BLE_0;
 	notify_idle_to_ble_start();
 }
 
-void state_machine::ble_to_a2dp(bluetooth_address ble_addr)
+void state_machine::ble_to_a2dp(bluetooth_address addr)
 {
 	ESP_LOGI(TAG, "ble->a2dp");
 
@@ -77,31 +83,13 @@ void state_machine::ble_to_a2dp(bluetooth_address ble_addr)
 		return;
 	}
 
-	m_first_address = ble_addr;
-	m_second_address = {};
+	m_a2dp_address = addr;
 
 	m_state = state_t::BLE_TO_A2DP_0;
 	notify_ble_to_a2dp_start();
 }
 
-void state_machine::a2dp_to_a2dp(bluetooth_address old_addr, bluetooth_address new_addr)
-{
-	ESP_LOGI(TAG, "a2dp->a2dp");
-
-	if (m_state != state_t::A2DP)
-	{
-		ESP_LOGW(TAG, "Cannot start a2dp->a2dp switch when already switching modes");
-		return;
-	}
-
-	m_first_address = old_addr;
-	m_second_address = new_addr;
-
-	m_state = state_t::A2DP_TO_A2DP_0;
-	notify_a2dp_to_a2dp_start();
-}
-
-void state_machine::a2dp_to_ble(bluetooth_address addr)
+void state_machine::a2dp_to_ble()
 {
 	ESP_LOGI(TAG, "a2dp->ble");
 
@@ -111,62 +99,59 @@ void state_machine::a2dp_to_ble(bluetooth_address addr)
 		return;
 	}
 
-	m_first_address = addr;
-	m_second_address = {};
-
 	m_state = state_t::A2DP_TO_BLE_0;
 	notify_a2dp_to_ble_start();
 }
 
 void state_machine::notify_scan_finished()
 {
-	send_msg(msg_t::SCAN_FINISHED);
+	send_msg(msg_t::SCAN_FINISHED, 0);
 }
 
 void state_machine::notify_ble_opened(int conn_id)
 {
-	saved_conn_id = conn_id;
-	send_msg(msg_t::BLE_OPENED);
+	m_saved_conn_id = conn_id;
+	send_msg(msg_t::BLE_OPENED, 0);
 }
 
 void state_machine::notify_mtu_configured()
 {
-	send_msg(msg_t::MTU_CONFIGURED);
+	send_msg(msg_t::MTU_CONFIGURED, 0);
 }
 
 void state_machine::notify_ble_connected()
 {
-	send_msg(msg_t::BLE_CONNECTED);
+	send_msg(msg_t::BLE_CONNECTED, 0);
 }
 
 void state_machine::notify_ble_disconnected()
 {
-	send_msg(msg_t::BLE_DISCONNECTED);
+	send_msg(msg_t::BLE_DISCONNECTED, 0);
 }
 
 void state_machine::notify_a2dp_connected()
 {
-	send_msg(msg_t::A2DP_CONNECTED);
+	send_msg(msg_t::A2DP_CONNECTED, 0);
 }
 
 void state_machine::notify_a2dp_media_started()
 {
-	send_msg(msg_t::A2DP_MEDIA_STARTED);
+	send_msg(msg_t::A2DP_MEDIA_STARTED, 0);
 }
 
 void state_machine::notify_a2dp_media_stopped()
 {
-	send_msg(msg_t::A2DP_MEDIA_STOPPED);
+	send_msg(msg_t::A2DP_MEDIA_STOPPED, 0);
 }
 
 void state_machine::notify_a2dp_disconnecting()
 {
-	send_msg(msg_t::A2DP_DISCONNECTING);
+	send_msg(msg_t::A2DP_DISCONNECTING, 0);
 }
 
 void state_machine::notify_a2dp_disconnected()
 {
-	send_msg(msg_t::A2DP_DISCONNECTED);
+	send_msg(msg_t::A2DP_DISCONNECTED, 0);
 }
 
 void state_machine::handler()
@@ -177,9 +162,9 @@ void state_machine::handler()
 
         if (!m_messages.empty())
         {
-            msg_t msg = m_messages.front();
+            auto priority_msg = m_messages.top();
             m_messages.pop();
-            return msg;
+            return priority_msg.msg;
         }
         else
         {
@@ -227,7 +212,7 @@ void state_machine::handler()
 				{
 					ESP_LOGI(TAG, "IDLE_TO_BLE Kickstart connections");
 					m_state = state_t::IDLE_TO_BLE_2;
-					to_connect = begin(*m_servers);
+					m_to_connect = begin(*m_servers);
 					// Send an "empty" connected message to kickstart connecting process
 					notify_ble_connected();
 				}
@@ -237,13 +222,13 @@ void state_machine::handler()
 		case state_t::IDLE_TO_BLE_2:
 			if (msg == msg_t::BLE_CONNECTED)
 			{
-				if (to_connect != end(*m_servers))
+				if (m_to_connect != end(*m_servers))
 				{
-					ESP_LOGI(TAG, "IDLE_TO_BLE Open new connection with");
+					ESP_LOGI(TAG, "IDLE_TO_BLE Open new connection with %s", to_string(m_to_connect->address()).c_str());
 					m_state = state_t::IDLE_TO_BLE_3;
 					ESP_ERROR_CHECK(esp_ble_gattc_open(
-	            		interface,
-	            		to_connect->address(),
+	            		m_interface,
+	            		m_to_connect->address(),
 	            		BLE_ADDR_TYPE_PUBLIC,
 	            		true));
 				}
@@ -258,22 +243,23 @@ void state_machine::handler()
 		case state_t::IDLE_TO_BLE_3:
 			if (msg == msg_t::BLE_OPENED)
 			{
-				ESP_LOGI(TAG, "IDLE_TO_BLE Send MTU negotation to");
+				ESP_LOGI(TAG, "IDLE_TO_BLE Send MTU negotation to %s", to_string(m_to_connect->address()).c_str());
 				m_state = state_t::IDLE_TO_BLE_4;
-				ESP_ERROR_CHECK(esp_ble_gattc_send_mtu_req(interface, saved_conn_id));
+				ESP_ERROR_CHECK(esp_ble_gattc_send_mtu_req(m_interface, m_saved_conn_id));
 			}
 			break;
 
 		case state_t::IDLE_TO_BLE_4:
 			if (msg == msg_t::MTU_CONFIGURED)
 			{
-				ESP_LOGI(TAG, "IDLE_TO_BLE Register for notifications with");
+				ESP_LOGI(TAG, "IDLE_TO_BLE Register for notifications with %s", to_string(m_to_connect->address()).c_str());
 				m_state = state_t::IDLE_TO_BLE_2;
 				ESP_ERROR_CHECK(esp_ble_gattc_register_for_notify(
-        			interface,
-					to_connect->address(),
+        			m_interface,
+					m_to_connect->address(),
 					0x2a));
-				++to_connect;
+				m_to_connect->ble_connected() = true;
+				++m_to_connect;
 			}
 			break;
 
@@ -284,7 +270,7 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "BLE_TO_A2DP Connect A2DP");
 				m_state = state_t::BLE_TO_A2DP_1;
-				ESP_ERROR_CHECK(esp_a2d_sink_connect(m_first_address.value()));
+				ESP_ERROR_CHECK(esp_a2d_sink_connect(m_a2dp_address.value()));
 			}
 			break;
 
@@ -297,46 +283,8 @@ void state_machine::handler()
 			else if (msg == msg_t::A2DP_DISCONNECTED)
 			{
 				ESP_LOGI(TAG, "BLE_TO_A2DP Failed");
+				m_a2dp_address = {};
 				m_state = state_t::BLE;
-			}
-			break;
-
-
-		/* A2DP TO A2DP ALGORITHM */
-		case state_t::A2DP_TO_A2DP_0:
-			if (msg == msg_t::A2DP_TO_A2DP_START)
-			{
-				ESP_LOGI(TAG, "A2DP_TO_A2DP Stop media stream");
-				m_state = state_t::A2DP_TO_A2DP_1;
-				ESP_ERROR_CHECK(esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP));
-			}
-			break;
-
-		case state_t::A2DP_TO_A2DP_1:
-			if (msg == msg_t::A2DP_MEDIA_STOPPED)
-			{
-				ESP_LOGI(TAG, "A2DP_TO_A2DP Disconnect A2DP");
-				m_state = state_t::A2DP_TO_A2DP_2;
-				ESP_ERROR_CHECK(esp_a2d_sink_disconnect(m_first_address.value()));
-			}
-			break;
-
-		case state_t::A2DP_TO_A2DP_2:
-			if (msg == msg_t::A2DP_DISCONNECTED)
-			{
-				ESP_LOGI(TAG, "A2DP_TO_A2DP Connect other A2DP");
-				m_state = state_t::A2DP_TO_A2DP_3;
-				ESP_ERROR_CHECK(esp_a2d_sink_connect(m_second_address.value()));
-			}
-			break;
-
-		case state_t::A2DP_TO_A2DP_3:
-			if (msg == msg_t::A2DP_CONNECTED)
-			{
-				ESP_LOGI(TAG, "A2DP_TO_A2DP Finished");
-				m_state = state_t::A2DP;
-				m_first_address = m_second_address;
-				m_second_address = {};
 			}
 			break;
 
@@ -356,7 +304,7 @@ void state_machine::handler()
 			{
 				ESP_LOGI(TAG, "A2DP_TO_BLE Disconnect A2DP");
 				m_state = state_t::A2DP_TO_BLE_2;
-				ESP_ERROR_CHECK(esp_a2d_sink_disconnect(m_first_address.value()));
+				ESP_ERROR_CHECK(esp_a2d_sink_disconnect(m_a2dp_address.value()));
 			}
 			break;
 
@@ -366,7 +314,7 @@ void state_machine::handler()
 				// Disconnected A2DP
 				ESP_LOGI(TAG, "A2DP_TO_BLE Finished");
 				m_state = state_t::BLE;
-				m_first_address = {};
+				m_a2dp_address = {};
 			}
 			break;
 
@@ -377,28 +325,23 @@ void state_machine::handler()
 	}
 }
 
-void state_machine::send_msg(msg_t msg)
+void state_machine::send_msg(msg_t msg, int priority)
 {
 	std::lock_guard<std::mutex> l(m_message_mutex);
-	m_messages.emplace(msg);
+	m_messages.push({msg, priority});
 }
 
 void state_machine::notify_idle_to_ble_start()
 {
-	send_msg(msg_t::IDLE_TO_BLE_START);
+	send_msg(msg_t::IDLE_TO_BLE_START, 0);
 }
 
 void state_machine::notify_ble_to_a2dp_start()
 {
-	send_msg(msg_t::BLE_TO_A2DP_START);
-}
-
-void state_machine::notify_a2dp_to_a2dp_start()
-{
-	send_msg(msg_t::A2DP_TO_A2DP_START);
+	send_msg(msg_t::BLE_TO_A2DP_START, 0);
 }
 
 void state_machine::notify_a2dp_to_ble_start()
 {
-	send_msg(msg_t::A2DP_TO_BLE_START);
+	send_msg(msg_t::A2DP_TO_BLE_START, 0);
 }

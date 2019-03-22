@@ -96,6 +96,14 @@ void bluetooth_client::a2dp_data_callback(const std::uint8_t *data, std::uint32_
     if (len == 0 || data == nullptr)
         return;
 
+    for (std::uint32_t i = 0; i < len / 2; i++)
+    {
+        std::int16_t value =
+            (data[2 * i + 0] << 0) |
+            (data[2 * i + 1] << 8);
+        fprintf(stderr, "VALUE: %hu\n", value);
+    }
+
     sum_len += len;
 
     if (++m_pkt_cnt % 100 == 0)

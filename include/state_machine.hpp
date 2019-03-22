@@ -35,11 +35,6 @@ public:
 		BLE_TO_A2DP_0,
 		BLE_TO_A2DP_1,
 
-		A2DP_TO_A2DP_0,
-		A2DP_TO_A2DP_1,
-		A2DP_TO_A2DP_2,
-		A2DP_TO_A2DP_3,
-
 		A2DP_TO_BLE_0,
 		A2DP_TO_BLE_1,
 		A2DP_TO_BLE_2,
@@ -49,7 +44,6 @@ public:
 	{
 		IDLE_TO_BLE_START,
 		BLE_TO_A2DP_START,
-		A2DP_TO_A2DP_START,
 		A2DP_TO_BLE_START,
 
 		SCAN_FINISHED,
@@ -66,8 +60,16 @@ public:
 		A2DP_DISCONNECTED,
 	};
 
+	struct priority_msg_t
+	{
+		msg_t msg;
+		int priority;
+	};
+
+	static bool is_priority_over(const priority_msg_t& l, const priority_msg_t& r);
+
 	/* Constructors */
-	state_machine() = default;
+	state_machine();
 	state_machine(const state_machine&) = delete;
 	state_machine(state_machine&&) = default;
 
@@ -86,11 +88,9 @@ public:
 	// Switches from idle to (N BLE, 0 A2DP). Should be run only once, after scanning
 	void idle_to_ble(std::uint16_t interface, std::vector<bluetooth_server_info> *servers);
 	// Switches from (N BLE, 0 A2DP) to (N - 1 BLE, 1 A2DP)
-	void ble_to_a2dp(bluetooth_address ble_addr);
-	// Switches from (N - 1 BLE, 1 A2DP) to (N - 1 BLE, 1 A2DP)
-	void a2dp_to_a2dp(bluetooth_address old_addr, bluetooth_address new_addr);
+	void ble_to_a2dp(bluetooth_address addr);
 	// Switches from (N - 1 BLE, 1 A2DP) to (N BLE, 0 A2DP)
-	void a2dp_to_ble(bluetooth_address addr);
+	void a2dp_to_ble();
 	void notify_scan_finished();
 	void notify_ble_opened(int conn_id);
 	void notify_mtu_configured();
@@ -106,20 +106,26 @@ public:
 
 private:
 	/* Members */
-	std::queue<msg_t> m_messages;
+	std::priority_queue<
+		priority_msg_t,
+		std::vector<priority_msg_t>,
+		std::decay_t<decltype(is_priority_over)>> m_messages;
 	std::mutex m_message_mutex;
 
 	std::vector<bluetooth_server_info> *m_servers;
-	state_t m_state = state_t::IDLE;
-	std::optional<bluetooth_address> m_first_address;
-	std::optional<bluetooth_address> m_second_address;
+	state_t m_state;
+	state_t m_saved_state;
+	std::optional<bluetooth_address> m_a2dp_address;
+
+	std::vector<bluetooth_server_info>::iterator m_to_connect;
+	std::uint16_t m_interface;
+	int m_saved_conn_id;
 
 	/* Methods */
 	void handler();
-	void send_msg(msg_t msg);
+	void send_msg(msg_t msg, int priority);
 	void notify_idle_to_ble_start();
 	void notify_ble_to_a2dp_start();
-	void notify_a2dp_to_a2dp_start();
 	void notify_a2dp_to_ble_start();
 };
 
